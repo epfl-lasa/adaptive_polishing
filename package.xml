@@ -13,7 +13,7 @@
   <!-- One license tag required, multiple allowed, one license per tag -->
   <!-- Commonly used license strings: -->
   <!--   BSD, MIT, Boost Software License, GPLv2, GPLv3, LGPLv2.1, LGPLv3 -->
-  <license>TODO</license>
+  <license>BSD</license>
 
 
   <!-- Url tags are optional, but multiple are allowed, one per tag -->
@@ -43,10 +43,15 @@
   <build_depend>roscpp</build_depend>
   <build_depend>rospy</build_depend>
   <build_depend>std_msgs</build_depend>
+  <build_depend>dynamic_reconfigure</build_depend>
+
+
   <run_depend>roscpp</run_depend>
   <run_depend>rospy</run_depend>
-  <run_depend>std_msgs</run_depend>
+  <run_depend>std_msgs</run_depend>  
+  <run_depend>dynamic_reconfigure</run_depend>
 
+ 
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

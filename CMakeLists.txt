@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(adaptive_polishing)
 
 ## Add support for C++11, supported in ROS Kinetic and newer
-# add_definitions(-std=c++11)
+add_definitions(-std=c++11)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -11,6 +11,9 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  mathlib
+  sgaussians
+   dynamic_reconfigure
 )
 
 ## System dependencies are found with CMake's conventions
@@ -93,6 +96,10 @@ find_package(catkin REQUIRED COMPONENTS
 #   cfg/DynReconf2.cfg
 # )
 
+ generate_dynamic_reconfigure_options(
+  cfg/polishing_params.cfg
+) 
+
 ###################################
 ## catkin specific configuration ##
 ###################################
@@ -113,12 +120,20 @@ catkin_package(
 ## Build ##
 ###########
 
+
+# set(INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
+# set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(
   ${catkin_INCLUDE_DIRS}
+  include
+  ${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake
 )
+
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
@@ -135,6 +150,17 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/adaptive_polishing_node.cpp)
 
+add_executable(adaptive_polishing_node 
+	src/adaptive_polishing_node.cpp
+	src/adaptive_polishing.cpp
+	include/adaptive_polishing.h
+	)
+
+# add_executable(active_motionGenerator_node 
+# 	${SRC_DIR}/active_motionGenerator_node.cpp
+# 	${SRC_DIR}/DSMotionGenerator.cpp
+# ${INCLUDE_DIR}/DSMotionGenerator.h)
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -145,10 +171,19 @@ include_directories(
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
+add_dependencies(adaptive_polishing_node  
+	${${PROJECT_NAME}_EXPORTED_TARGETS} 
+	${catkin_EXPORTED_TARGETS}
+    # ${PROJECT_NAME}_gencfg
+)
+
+
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
+
+target_link_libraries(adaptive_polishing_node ${catkin_LIBRARIES} )
 
 #############
 ## Install ##
