@@ -35,8 +35,6 @@ private:
 	std::string output_topic_name_;
 	std::string output_filtered_topic_name_;
 
-	int my_int_;
-	std::vector<double> my_vec_;
 
 	ros::Subscriber sub_real_pose_;
 	ros::Publisher pub_desired_twist_;
@@ -92,8 +90,23 @@ private:
 	std::mutex mutex_;
 
 	MathLib::Vector real_pose_;
-	// MathLib::Vector target_pose_;
-	// MathLib::Vector target_offset_;
+	MathLib::Vector target_pose_;
+	MathLib::Vector target_offset_;
+
+
+	// Motion detail
+	std::vector<double> Cycle_Target_;
+
+	double Cycle_radius_;
+	double Cycle_radius_scale_;
+
+	double Cycle_speed_;
+	double Cycle_speed_offset_;
+
+	double Convergence_Rate_;
+	double Convergence_Rate_scale_;
+
+	double Velocity_limit_;
 
 
 	MathLib::Vector desired_velocity_;
@@ -106,12 +119,15 @@ private:
 
 public:
 	Adaptive_polishing(ros::NodeHandle &n,
-	                   double frequency,
-	                   std::string input_topic_name,
-	                   std::string output_topic_name,
-	                   std::string output_filtered_topic_name,
-	                   int my_int,
-	                   std::vector<double> my_vec);
+		double frequency,
+		std::string input_topic_name,
+		std::string output_topic_name,
+		std::string output_filtered_topic_name,
+		std::vector<double> CenterRotation,
+		double radius,
+		double RotationSpeed,
+		double ConvergenceRate
+        );
 
 	bool Init();
 

@@ -5,10 +5,10 @@
 
 
   <group ns="ds1">
-    <param name="input_topic_name" value="/input"/>
+    <param name="input_topic_name" value="/input"/>  <!--"/input"/>-->
     <param name="output_topic_name" value="/output"/>
     <param name="output_filtered_topic_name" value="/filtered_output"/>
-    <rosparam command="load" file="$(find adaptive_polishing)/config/default.yml"/>   
+    <rosparam command="load" file="$(find adaptive_polishing)/config/polishing_init_param.yml"/>   
     <node name="main_node" pkg="adaptive_polishing" type="adaptive_polishing_node" output="screen"/>
   </group>
 
