@@ -13,7 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   mathlib
   sgaussians
-   dynamic_reconfigure
+  dynamic_reconfigure
 )
 
 ## System dependencies are found with CMake's conventions
@@ -153,7 +153,9 @@ include_directories(
 add_executable(adaptive_polishing_node 
 	src/adaptive_polishing_node.cpp
 	src/adaptive_polishing.cpp
+  src/MotionGenerator.cpp
 	include/adaptive_polishing.h
+  include/MotionGenerator.h
 	)
 
 # add_executable(active_motionGenerator_node 

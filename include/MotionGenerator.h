@@ -1,5 +1,5 @@
-#ifndef __ADAPTIVE_POLISHING_H__
-#define __ADAPTIVE_POLISHING_H__
+#ifndef __MOTION_GENERATION_H__
+#define __MOTION_GENERATION_H__
 
 #include "ros/ros.h"
 #include <vector>
@@ -19,10 +19,10 @@
 #include <mutex>
 
 
-#include <dynamic_reconfigure/server.h>
-#include <adaptive_polishing/polishing_paramsConfig.h>
+// #include <dynamic_reconfigure/server.h>
+// #include <adaptive_polishing/polishing_paramsConfig.h>
 
-class Adaptive_polishing {
+class MotionGenerator {
 
 
 private:
@@ -46,15 +46,11 @@ private:
 	double dt_;
 
 
-	// double max_desired_vel_;
-
 	// Filter variables: it takes x and use Wn as gains and dx ddx as limits
 	std::unique_ptr<CDDynamics> filter_;
 	double filter_Wn_;
 	MathLib::Vector filter_dxLim_;
 	MathLib::Vector filter_ddxLim_;
-
-
 
 
 
@@ -72,9 +68,9 @@ private:
 
 
 
-	//dynamic reconfig settig
-	dynamic_reconfigure::Server<adaptive_polishing::polishing_paramsConfig> dyn_rec_srv_;
-	dynamic_reconfigure::Server<adaptive_polishing::polishing_paramsConfig>::CallbackType dyn_rec_f_;
+	// //dynamic reconfig settig
+	// dynamic_reconfigure::Server<motionGenerator::motion_paramsConfig> dyn_rec_srv_;
+	// dynamic_reconfigure::Server<motionGenerator::motion_paramsConfig>::CallbackType dyn_rec_f_;
 
 
 	// Class variables
@@ -84,53 +80,30 @@ private:
 	MathLib::Vector target_pose_;
 	MathLib::Vector target_offset_;
 
-
-	// Motion detail
-	std::vector<double> Cycle_Target_;
-
-	double Cycle_radius_;
-	double Cycle_radius_scale_;
-
-	double Cycle_speed_;
-	double Cycle_speed_offset_;
-
-	double Convergence_Rate_;
-	double Convergence_Rate_scale_;
-
 	double Velocity_limit_;
-
 
 	MathLib::Vector desired_velocity_;
 	MathLib::Vector desired_velocity_filtered_;
 
-	// double scaling_factor_;
-	// double ds_vel_limit_;
-
 
 
 public:
-	Adaptive_polishing(ros::NodeHandle &n,
+	MotionGenerator(ros::NodeHandle &n,
 		double frequency,
 		std::string input_rob_pos_topic_name,
 		std::string output_vel_topic_name,
 		std::string output_filtered_vel_topic_name,
 		std::string input_rob_vel_topic_name,
-		std::string input_rob_force_ee_topic_name,
-		std::vector<double> CenterRotation,
-		double radius,
-		double RotationSpeed,
-		double ConvergenceRate
+		std::string input_rob_force_ee_topic_name
         );
 
 	bool Init();
 
 	void Run();
 
-private:
+protected:
 
 	bool InitializeROS();
-
-	// bool InitializeDS();
 
 	void UpdateRealPosition(const geometry_msgs::Pose::ConstPtr& msg);
 
@@ -140,9 +113,11 @@ private:
 
 	void PublishFuturePath();
 
-	void DynCallback(adaptive_polishing::polishing_paramsConfig &config, uint32_t level);
+	// virtual void DynCallback(motionGenerator::motion_paramsConfig &config, uint32_t level) = 0;
+
+	virtual MathLib::Vector getVelocityFromPose(MathLib::Vector pose) = 0;
 
 };
 
 
-#endif //__ADAPTIVE_POLISHING_H__
+#endif //__MOTION_GENERATION_H__

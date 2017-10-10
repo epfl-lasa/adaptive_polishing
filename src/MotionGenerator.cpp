@@ -1,21 +1,17 @@
-#include "adaptive_polishing.h"
+#include "MotionGenerator.h"
 
 
 
 
 
 
-Adaptive_polishing::Adaptive_polishing(ros::NodeHandle &n,
+MotionGenerator::MotionGenerator(ros::NodeHandle &n,
                                        double frequency,
                                        std::string input_rob_pose_topic_name,
                                        std::string output_vel_topic_name,
                                        std::string output_filtered_vel_topic_name,
                                        std::string input_rob_vel_topic_name,
-									   std::string input_rob_force_ee_topic_name,
-                                       std::vector<double> CenterRotation,
-        							   double radius,
-        							   double RotationSpeed,
-									   double ConvergenceRate
+									   std::string input_rob_force_ee_topic_name
                                       )
 	: nh_(n),
 	  loop_rate_(frequency),
@@ -26,20 +22,13 @@ Adaptive_polishing::Adaptive_polishing(ros::NodeHandle &n,
 	  input_rob_force_ee_topic_name_(input_rob_force_ee_topic_name),
 	  filter_Wn_(.42),
 	  dt_(1 / frequency),
-	  Cycle_Target_(CenterRotation),
-	  Cycle_radius_(radius),
-	  Cycle_radius_scale_(1),
-	  Cycle_speed_(RotationSpeed),
-	  Cycle_speed_offset_(0),
-	  Convergence_Rate_(ConvergenceRate),
-	  Convergence_Rate_scale_(1),
 	  Velocity_limit_(0) 
 {
-	ROS_INFO_STREAM("AP.CPP: Adaptive polishing node is created at: " << nh_.getNamespace() << " with freq: " << frequency << "Hz");
+	ROS_INFO_STREAM("MotionGenerator.CPP: MotionGenerator node is created at: " << nh_.getNamespace() << " with freq: " << frequency << "Hz");
 }
 
 
-bool Adaptive_polishing::Init() {
+bool MotionGenerator::Init() {
 
 
 
@@ -78,14 +67,6 @@ bool Adaptive_polishing::Init() {
 	filter_->SetState(initial);
 	filter_->SetTarget(initial);
 
-
-
-
-	// if (!InitializeDS()) {
-	// 	ROS_ERROR_STREAM("ERROR intializing the DS");
-	// 	return false;
-	// }
-
 	if (!InitializeROS()) {
 		ROS_ERROR_STREAM("ERROR intializing ROS variables");
 		return false;
@@ -96,10 +77,10 @@ bool Adaptive_polishing::Init() {
 
 
 
-bool Adaptive_polishing::InitializeROS() {
+bool MotionGenerator::InitializeROS() {
 
 	sub_real_pose_ = nh_.subscribe(input_rob_pose_topic_name_ , 1000,
-	                               &Adaptive_polishing::UpdateRealPosition, this,
+	                               &MotionGenerator::UpdateRealPosition, this,
 	                               ros::TransportHints().reliable().tcpNoDelay());
 
 	pub_desired_twist_ = nh_.advertise<geometry_msgs::Twist>(output_vel_topic_name_, 1000, 1);
@@ -114,8 +95,8 @@ bool Adaptive_polishing::InitializeROS() {
 	pub_DesiredPath_ = nh_.advertise<nav_msgs::Path>("DS/DesiredPath", 1);
 	msg_DesiredPath_.poses.resize(MAX_FRAME);
 
-	dyn_rec_f_ = boost::bind(&Adaptive_polishing::DynCallback, this, _1, _2);
-	dyn_rec_srv_.setCallback(dyn_rec_f_);
+	// dyn_rec_f_ = boost::bind(&MotionGenerator::DynCallback, this, _1, _2);
+	// dyn_rec_srv_.setCallback(dyn_rec_f_);
 
 
 
@@ -133,7 +114,7 @@ bool Adaptive_polishing::InitializeROS() {
 }
 
 
-void Adaptive_polishing::Run() {
+void MotionGenerator::Run() {
 
 	while (nh_.ok()) {
 
@@ -141,7 +122,7 @@ void Adaptive_polishing::Run() {
 
 		PublishDesiredVelocity();
 
-		// PublishFuturePath();
+		PublishFuturePath();
 		//pub_desired_twist_.pub()
 
 		ros::spinOnce();
@@ -151,30 +132,32 @@ void Adaptive_polishing::Run() {
 }
 
 
-void Adaptive_polishing::ComputeDesiredVelocity() {
+void MotionGenerator::ComputeDesiredVelocity() {
 
 	mutex_.lock();
 
 	
 	MathLib::Vector pose = real_pose_ - target_pose_  - target_offset_;
 
-	double x_vel = 0;
-	double y_vel = 0;
-	double z_vel = - Convergence_Rate_ * Convergence_Rate_scale_ * pose(2);
+	// double x_vel = 0;
+	// double y_vel = 0;
+	// double z_vel = - Convergence_Rate_ * Convergence_Rate_scale_ * pose(2);
 
-	double R = sqrt(pose(0) * pose(0) + pose(1) * pose(1));
-	double T = atan2(pose(1), pose(0));
+	// double R = sqrt(pose(0) * pose(0) + pose(1) * pose(1));
+	// double T = atan2(pose(1), pose(0));
 
-	double Rdot = - Convergence_Rate_ * Convergence_Rate_scale_ * (R - Cycle_radius_ * Cycle_radius_scale_);
-	double Tdot = Cycle_speed_ + Cycle_speed_offset_;
+	// double Rdot = - Convergence_Rate_ * Convergence_Rate_scale_ * (R - Cycle_radius_ * Cycle_radius_scale_);
+	// double Tdot = Cycle_speed_ + Cycle_speed_offset_;
 
 
-	x_vel = Rdot * cos(T) - R * Tdot * sin(T);
-	y_vel = Rdot * sin(T) + R * Tdot * cos(T);
+	// x_vel = Rdot * cos(T) - R * Tdot * sin(T);
+	// y_vel = Rdot * sin(T) + R * Tdot * cos(T);
 
-	desired_velocity_(0) = x_vel;
-	desired_velocity_(1) = y_vel;
-	desired_velocity_(2) = z_vel;
+	// desired_velocity_(0) = x_vel;
+	// desired_velocity_(1) = y_vel;
+	// desired_velocity_(2) = z_vel;
+
+	desired_velocity_ = getVelocityFromPose(pose);
 
 	if (std::isnan(desired_velocity_.Norm2())) {
 		ROS_WARN_THROTTLE(1, "DS is generating NaN. Setting the output to zero.");
@@ -207,7 +190,8 @@ void Adaptive_polishing::ComputeDesiredVelocity() {
 
 
 
-void Adaptive_polishing::UpdateRealPosition(const geometry_msgs::Pose::ConstPtr& msg) {
+
+void MotionGenerator::UpdateRealPosition(const geometry_msgs::Pose::ConstPtr& msg) {
 
 	// msg_real_pose_ = *msg;
 
@@ -237,7 +221,7 @@ void Adaptive_polishing::UpdateRealPosition(const geometry_msgs::Pose::ConstPtr&
 	// real_pose_(5?) = yaw;
 }
 
-void Adaptive_polishing::PublishDesiredVelocity() {
+void MotionGenerator::PublishDesiredVelocity() {
 
 	msg_desired_velocity_.header.stamp = ros::Time::now();
 
@@ -275,62 +259,7 @@ void Adaptive_polishing::PublishDesiredVelocity() {
 }
 
 
-
-void Adaptive_polishing::DynCallback(adaptive_polishing::polishing_paramsConfig &config, uint32_t level) {
-
-
-	ROS_INFO("Reconfigure request. Updatig the parameters ...");
-
-	filter_Wn_ = config.Wn;
-	filter_->SetWn(filter_Wn_);
-
-
-	filter_dxLim_(0) = config.fil_dx_lim;
-	filter_dxLim_(1) = config.fil_dx_lim;
-	filter_dxLim_(2) = config.fil_dx_lim;
-	filter_->SetVelocityLimits(filter_dxLim_);
-
-	filter_ddxLim_(0) = config.fil_ddx_lim;
-	filter_ddxLim_(1) = config.fil_ddx_lim;
-	filter_ddxLim_(2) = config.fil_ddx_lim;
-	filter_->SetAccelLimits(filter_ddxLim_);
-
-
-
-	target_offset_(0) = config.offset_x;
-	target_offset_(1) = config.offset_y;
-	target_offset_(2) = config.offset_z;
-
-	Cycle_radius_scale_ = config.radius_scale;
-	Cycle_speed_offset_ = config.Speed_offset;
-	Convergence_Rate_scale_ = config.ConvergenceSpeed;
-	Velocity_limit_ = config.vel_trimming;
-
-	if (Cycle_radius_scale_ < 0) {
-		ROS_ERROR("RECONFIGURE: The scaling factor for radius cannot be negative!");
-	}
-
-	if (Convergence_Rate_scale_ < 0) {
-		ROS_ERROR("RECONFIGURE: The scaling factor for convergence rate cannot be negative!");
-	}
-
-	if (Velocity_limit_ < 0) {
-		ROS_ERROR("RECONFIGURE: The limit for velocity cannot be negative!");
-	}
-
-
-
-	// target_offset_(0) = config.offset_x;
-	// target_offset_(1) = config.offset_y;
-	// target_offset_(2) = config.offset_z;
-
-	// scaling_factor_ = config.scaling;
-	// ds_vel_limit_   = config.trimming;
-}
-
-
-
-void Adaptive_polishing::PublishFuturePath() {
+void MotionGenerator::PublishFuturePath() {
 
 	geometry_msgs::PointStamped msg;
 
@@ -359,25 +288,13 @@ void Adaptive_polishing::PublishFuturePath() {
 	for (int frame = 0; frame < MAX_FRAME; frame++)
 	{
 
-
-
 		MathLib::Vector pose = simulated_pose - target_pose_  - target_offset_;
 
-		double R = sqrt(pose(0) * pose(0) + pose(1) * pose(1));
-		double T = atan2(pose(1), pose(0));
-
-		double Rdot = - Convergence_Rate_ * Convergence_Rate_scale_ * (R - Cycle_radius_ * Cycle_radius_scale_);
-		double Tdot = Cycle_speed_ + Cycle_speed_offset_;
-
-		simulated_vel(0) = Rdot * cos(T) - R * Tdot * sin(T);
-		simulated_vel(1) = Rdot * sin(T) + R * Tdot * cos(T);
-		simulated_vel(2) = - Convergence_Rate_ * Convergence_Rate_scale_ * pose(2);
+		simulated_vel = getVelocityFromPose(pose);
 
 		if (simulated_vel.Norm() > Velocity_limit_) {
 			simulated_vel = simulated_vel / simulated_vel.Norm() * Velocity_limit_;
 		}
-
-
 
 		simulated_pose[0] +=  simulated_vel[0] * dt_ * 20;
 		simulated_pose[1] +=  simulated_vel[1] * dt_ * 20;
@@ -390,9 +307,5 @@ void Adaptive_polishing::PublishFuturePath() {
 		msg_DesiredPath_.poses[frame].pose.position.z = simulated_pose[2];
 
 		pub_DesiredPath_.publish(msg_DesiredPath_);
-
-
 	}
-
-
 }
