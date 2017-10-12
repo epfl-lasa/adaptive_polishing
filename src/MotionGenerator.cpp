@@ -22,8 +22,9 @@ MotionGenerator::MotionGenerator(ros::NodeHandle &n,
 	  input_rob_force_ee_topic_name_(input_rob_force_ee_topic_name),
 	  filter_Wn_(.42),
 	  dt_(1 / frequency),
-	  Velocity_limit_(0) 
+	  Velocity_limit_(1) 
 {
+	Init();
 	ROS_INFO_STREAM("MotionGenerator.CPP: MotionGenerator node is created at: " << nh_.getNamespace() << " with freq: " << frequency << "Hz");
 }
 
@@ -95,12 +96,6 @@ bool MotionGenerator::InitializeROS() {
 	pub_DesiredPath_ = nh_.advertise<nav_msgs::Path>("DS/DesiredPath", 1);
 	msg_DesiredPath_.poses.resize(MAX_FRAME);
 
-	// dyn_rec_f_ = boost::bind(&MotionGenerator::DynCallback, this, _1, _2);
-	// dyn_rec_srv_.setCallback(dyn_rec_f_);
-
-
-
-
 	if (nh_.ok()) { // Wait for poses being published
 		ros::spinOnce();
 		ROS_INFO("The Motion generator is ready.");
@@ -135,29 +130,10 @@ void MotionGenerator::Run() {
 void MotionGenerator::ComputeDesiredVelocity() {
 
 	mutex_.lock();
-
 	
 	MathLib::Vector pose = real_pose_ - target_pose_  - target_offset_;
 
-	// double x_vel = 0;
-	// double y_vel = 0;
-	// double z_vel = - Convergence_Rate_ * Convergence_Rate_scale_ * pose(2);
-
-	// double R = sqrt(pose(0) * pose(0) + pose(1) * pose(1));
-	// double T = atan2(pose(1), pose(0));
-
-	// double Rdot = - Convergence_Rate_ * Convergence_Rate_scale_ * (R - Cycle_radius_ * Cycle_radius_scale_);
-	// double Tdot = Cycle_speed_ + Cycle_speed_offset_;
-
-
-	// x_vel = Rdot * cos(T) - R * Tdot * sin(T);
-	// y_vel = Rdot * sin(T) + R * Tdot * cos(T);
-
-	// desired_velocity_(0) = x_vel;
-	// desired_velocity_(1) = y_vel;
-	// desired_velocity_(2) = z_vel;
-
-	desired_velocity_ = getVelocityFromPose(pose);
+	desired_velocity_ = GetVelocityFromPose(pose);
 
 	if (std::isnan(desired_velocity_.Norm2())) {
 		ROS_WARN_THROTTLE(1, "DS is generating NaN. Setting the output to zero.");
@@ -178,9 +154,9 @@ void MotionGenerator::ComputeDesiredVelocity() {
 	// msg_desired_velocity_.twist.angular.y = 0;
 	// msg_desired_velocity_.twist.angular.z = 0;
 
-	filter_->SetTarget(desired_velocity_);
-	filter_->Update();
-	filter_->GetState(desired_velocity_filtered_);
+	 filter_->SetTarget(desired_velocity_);
+	 filter_->Update();
+	 filter_->GetState(desired_velocity_filtered_);
 
 
 
@@ -222,6 +198,7 @@ void MotionGenerator::UpdateRealPosition(const geometry_msgs::Pose::ConstPtr& ms
 }
 
 void MotionGenerator::PublishDesiredVelocity() {
+
 
 	msg_desired_velocity_.header.stamp = ros::Time::now();
 
@@ -290,7 +267,9 @@ void MotionGenerator::PublishFuturePath() {
 
 		MathLib::Vector pose = simulated_pose - target_pose_  - target_offset_;
 
-		simulated_vel = getVelocityFromPose(pose);
+		simulated_vel = GetVelocityFromPose(pose);
+
+
 
 		if (simulated_vel.Norm() > Velocity_limit_) {
 			simulated_vel = simulated_vel / simulated_vel.Norm() * Velocity_limit_;

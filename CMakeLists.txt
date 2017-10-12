@@ -152,10 +152,12 @@ include_directories(
 
 add_executable(adaptive_polishing_node 
 	src/adaptive_polishing_node.cpp
-	src/adaptive_polishing.cpp
+	# src/adaptive_polishing.cpp
   src/MotionGenerator.cpp
-	include/adaptive_polishing.h
+  src/adaptivePolishing.cpp
+	# include/adaptive_polishing.h
   include/MotionGenerator.h
+  include/adaptivePolishing.h
 	)
 
 # add_executable(active_motionGenerator_node 

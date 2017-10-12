@@ -1,4 +1,4 @@
-#include "adaptive_polishing.h"
+#include "adaptivePolishing.h"
 
 // #include "ros/ros.h"
 // #include <vector>
@@ -76,7 +76,7 @@ int main(int argc, char **argv)
 
   ROS_INFO("Starting the Motion generator... and guess what? doing nothing!");
 
-  Adaptive_polishing my_adaptive_polishing(
+  AdaptivePolishing my_adaptive_polishing(
     nh,
     frequency,
     input_rob_pose_topic_name,
@@ -89,12 +89,8 @@ int main(int argc, char **argv)
     RotationSpeed,
     ConvergenceRate);
 
-  if (!my_adaptive_polishing.Init()) {
-    return -1;
-  }
-  else {
-    my_adaptive_polishing.Run();
-  }
+  my_adaptive_polishing.Run();
+
 
 
   return 0;

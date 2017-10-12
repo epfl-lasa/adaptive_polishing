@@ -13,7 +13,6 @@
 
 
 #include "MathLib.h"
-// #include "GMRDynamics.h"
 #include "CDDynamics.h"
 
 #include <mutex>
@@ -25,7 +24,7 @@
 class MotionGenerator {
 
 
-private:
+protected:
 
 	// ROS variables
 	ros::NodeHandle nh_;
@@ -113,9 +112,7 @@ protected:
 
 	void PublishFuturePath();
 
-	// virtual void DynCallback(motionGenerator::motion_paramsConfig &config, uint32_t level) = 0;
-
-	virtual MathLib::Vector getVelocityFromPose(MathLib::Vector pose) = 0;
+	virtual MathLib::Vector GetVelocityFromPose(MathLib::Vector pose) = 0;
 
 };
 
