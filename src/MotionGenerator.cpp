@@ -36,7 +36,7 @@ Velocity_limit_(1)
 	sub_real_acc_ = nh_.subscribe(input_rob_acc_topic_name , 1000,
 	                               &MotionGenerator::UpdateRealAcceleration, this,
 	                               ros::TransportHints().reliable().tcpNoDelay());
-	 sub_robot_force_ = nh_.subscribe(input_rob_force_topic_name , 1000,
+	sub_robot_force_ = nh_.subscribe(input_rob_force_topic_name , 1000,
 	                                  &MotionGenerator::UpdateRobotSensedForce, this,
 	                                  ros::TransportHints().reliable().tcpNoDelay());
 
@@ -48,6 +48,7 @@ Velocity_limit_(1)
 	// target and desired path publishing with max size of output
 	pub_target_ = nh_.advertise<geometry_msgs::PointStamped>("DS/target", 1);
 	pub_DesiredPath_ = nh_.advertise<nav_msgs::Path>("DS/DesiredPath", 1);
+	pub_human_action_ = nh_.advertise<geometry_msgs::WrenchStamped>("DS/human_force",1);
 
 	msg_DesiredPath_.poses.resize(MAX_FRAME);
 
@@ -159,8 +160,8 @@ void MotionGenerator::ComputeDesiredVelocity() {
 	desired_velocity_ = GetVelocityFromPose(pose);
 
 	//TODO set this as a parameter
-	bool adaptable = 0;
-	if(rob_sensed_force.norm()>FORCE_THRESHOLD){
+	//bool adaptable = 0;
+	if(rob_sensed_force.segment(0,2).norm()>FORCE_THRESHOLD){
 		AdaptTrajectoryParameters(pose);
 	}
 
@@ -251,6 +252,15 @@ void MotionGenerator::UpdateRobotSensedForce(const geometry_msgs::WrenchStamped:
 	rob_sensed_force(X) = msg->wrench.force.x;
 	rob_sensed_force(Y) = msg->wrench.force.y;
 	rob_sensed_force(Z) = msg->wrench.force.z;
+
+	geometry_msgs::WrenchStamped msg_human_action_;
+	msg_human_action_.header = msg->header;
+
+	msg_human_action_.wrench.force.x = -rob_sensed_force(X);
+	msg_human_action_.wrench.force.y = -rob_sensed_force(Y);
+	msg_human_action_.wrench.force.z = -rob_sensed_force(Z);
+
+	pub_human_action_.publish(msg_human_action_);
 }
 
 

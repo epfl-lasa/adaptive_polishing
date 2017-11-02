@@ -38,6 +38,7 @@ protected:
 	ros::Subscriber sub_real_vel_;
 	ros::Subscriber sub_real_acc_;
 	ros::Subscriber sub_robot_force_;
+	ros::Publisher pub_human_action_;
 	ros::Publisher pub_desired_twist_;
 	ros::Publisher pub_desired_twist_filtered_;
 
@@ -60,7 +61,6 @@ protected:
 	// geometry_msgs::Pose msg_real_pose_;
 	geometry_msgs::TwistStamped msg_desired_velocity_;
 	geometry_msgs::TwistStamped msg_desired_velocity_filtered_;
-
 
 
 	// Class variables

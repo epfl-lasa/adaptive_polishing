@@ -128,6 +128,7 @@ void AdaptivePolishing::DynCallback(adaptive_polishing::polishing_paramsConfig &
 
 void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 
+	ROS_INFO("I'm adaaaaaptinnng");
 	//ROS_INFO("Detected human interaction, updatig the trajectory parameters ...");
 	if(Grad_desc_step_ == 0){
 		return;
@@ -140,8 +141,8 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 
 	Eigen::Vector2d grad_J = ComputeGradient(error_vel,pose);
 
-	Cycle_Target_(X) -= Grad_desc_epsilon_*grad_J(X);
-	Cycle_Target_(Y) -= Grad_desc_epsilon_*grad_J(Y);
+	Cycle_Target_(X) += Grad_desc_epsilon_*grad_J(X);
+	Cycle_Target_(Y) += Grad_desc_epsilon_*grad_J(Y);
 
 	// ROS_INFO_STREAM("gradJx: " << grad_J(X) << " gradJy: " << grad_J(Y) );
 

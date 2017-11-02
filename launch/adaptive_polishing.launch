@@ -5,7 +5,7 @@
     <param name="input_rob_pose_topic_name" value="/lwr/ee_pose"/>
     <param name="input_rob_vel_topic_name" value="/lwr/ee_vel"/>
     <param name="input_rob_acc_topic_name" value="/lwr/ee_accel"/>
-    <param name="input_rob_force_topic_name" value="/lwr/joint_controllers/ee_ft"/>
+    <param name="input_rob_force_topic_name" value="/lwr/ee_ft"/>
     <param name="output_vel_topic_name" value="/lwr/joint_controllers/passive_ds_command_vel"/>
     <param name="output_filtered_vel_topic_name" value="/filtered_output"/>
     <rosparam command="load" file="$(find adaptive_polishing)/config/polishing_init_param.yml"/>   
