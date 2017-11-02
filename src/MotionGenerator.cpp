@@ -3,7 +3,7 @@
 
 enum Coordinate { X=0 , Y=1 , Z=2 };
 
-
+MotionGenerator* MotionGenerator::me = NULL;
 
 MotionGenerator::MotionGenerator(ros::NodeHandle &n,
                                 	double frequency,
@@ -20,6 +20,12 @@ filter_Wn_(.42),
 dt_(1 / frequency),
 Velocity_limit_(1) 
 {
+
+	me = this;
+
+	// Allows to catch CTRL+C
+	signal(SIGINT,MotionGenerator::stopNode);
+
 	//ROS Topic initialization
 	sub_real_pose_ = nh_.subscribe(input_rob_pose_topic_name , 1000,
 	                               &MotionGenerator::UpdateRealPosition, this,
@@ -45,10 +51,10 @@ Velocity_limit_(1)
 
 	msg_DesiredPath_.poses.resize(MAX_FRAME);
 
-	// if (nh_.ok()) { // Wait for poses being published
-	// 	ros::spinOnce();
-	// 	ROS_INFO("The Motion generator is ready.");
-	// }
+	if (nh_.ok()) { // Wait for poses being published
+		ros::spinOnce();
+		ROS_INFO("The Motion generator is ready.");
+	}
 	// else {
 	// 	ROS_ERROR("The ros node has a problem.");
 	// }
@@ -96,25 +102,50 @@ bool MotionGenerator::Init() {
 	// desired_velocity_.Resize(3);
 	// desired_velocity_filtered_.Resize(3);
 
+	//thread for futur path
+	startThread_ = true;
+	if(pthread_create(&thread_, NULL, &MotionGenerator::startPathPublishingLoop, this))
+	{
+		throw std::runtime_error("Cannot create reception thread");  
+	}
 
 	return true;
 }
 
 void MotionGenerator::Run() {
 
-	while (nh_.ok()) {
+	while (!stop_) {
 
-		ComputeDesiredVelocity();
+		if(gotFirstPosition_){
 
-		PublishDesiredVelocity();
+			ComputeDesiredVelocity();
 
-		//PublishFuturePath();
+			PublishDesiredVelocity();
+		}
+
+		// PublishFuturePath();
 		//pub_desired_twist_.pub()
 
 		ros::spinOnce();
 
 		loop_rate_.sleep();
 	}
+
+	desired_velocity_.setZero();
+	PublishDesiredVelocity();
+	ros::spinOnce();
+	loop_rate_.sleep();
+
+	startThread_ = false;
+	pthread_join(thread_,NULL);
+
+	ros::shutdown();
+}
+
+void MotionGenerator::stopNode(int sig)
+{
+	ROS_INFO("Catched the ctrl C");
+	me->stop_ = true;
 }
 
 
@@ -179,6 +210,13 @@ void MotionGenerator::UpdateRealPosition(const geometry_msgs::Pose::ConstPtr& ms
 	real_pose_(Y) = msg->position.y;
 	real_pose_(Z) = msg->position.z;
 
+	if(!gotFirstPosition_)
+	{
+		//desired_pose_ = real_pose_;
+		//std:cerr << desired_pose_(2) << " " <<  real_pose_(2) << std::endl;
+
+		gotFirstPosition_ = true;
+	}
 	// double qtx = msg_real_pose_.orientation.x;
 	// double qty = msg_real_pose_.orientation.y;
 	// double qtz = msg_real_pose_.orientation.z;
@@ -297,4 +335,22 @@ void MotionGenerator::PublishFuturePath() {
 
 		pub_DesiredPath_.publish(msg_DesiredPath_);
 	}
+}
+
+void* MotionGenerator::startPathPublishingLoop(void* ptr)
+{
+    reinterpret_cast<MotionGenerator *>(ptr)->pathPublishingLoop(); 
+}
+
+
+void MotionGenerator::pathPublishingLoop()
+{
+    while(startThread_)
+    {
+        if(gotFirstPosition_)
+        {
+            PublishFuturePath();   
+        }
+    }
+    std::cerr << "END path publishing thread" << std::endl;
 }

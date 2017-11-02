@@ -79,7 +79,7 @@ void AdaptivePolishing::DynCallback(adaptive_polishing::polishing_paramsConfig &
 	ROS_INFO("Reconfigure request. Updatig the parameters ...");
 
 	filter_Wn_ = config.Wn;
-	
+
 	filter_->SetWn(filter_Wn_);
 
 	filter_dxLim_(X) = config.fil_dx_lim;

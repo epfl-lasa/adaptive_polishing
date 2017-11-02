@@ -19,7 +19,8 @@
 #include "CDDynamics.h"
 
 #include <mutex>
-
+#include <pthread.h>
+#include <signal.h>
 
 // #include <dynamic_reconfigure/server.h>
 // #include <adaptive_polishing/polishing_paramsConfig.h>
@@ -60,8 +61,6 @@ protected:
 	geometry_msgs::TwistStamped msg_desired_velocity_;
 	geometry_msgs::TwistStamped msg_desired_velocity_filtered_;
 
-	nav_msgs::Path msg_DesiredPath_;
-	int MAX_FRAME = 200;
 
 
 	// Class variables
@@ -89,6 +88,19 @@ protected:
 	Eigen::Vector3d desired_velocity_filtered_;
 
 
+	//boolean to make sure we have received at least one position
+	bool gotFirstPosition_ = false;
+
+	//thread to publish futur path
+	pthread_t thread_;
+	bool startThread_;
+	//futur path variables
+	nav_msgs::Path msg_DesiredPath_;
+	int MAX_FRAME = 200;
+
+	//so we can stop
+	static MotionGenerator* me;
+	bool stop_ = false;
 
 public:
 	MotionGenerator(ros::NodeHandle &n,
@@ -121,7 +133,14 @@ private:
 
 	void PublishDesiredVelocity();
 
+	//publish predicted path and 2 functions to set in on another thread
 	void PublishFuturePath();
+
+	static void* startPathPublishingLoop(void* ptr);
+
+	void pathPublishingLoop();
+
+	static void stopNode(int sig);
 
 protected:
 
