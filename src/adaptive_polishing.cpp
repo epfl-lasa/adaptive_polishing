@@ -156,7 +156,7 @@ void Adaptive_polishing::ComputeDesiredVelocity() {
 	mutex_.lock();
 
 	
-	MathLib::Vector pose = real_pose_ - target_pose_  - target_offset_;
+	MathLib::Vector pose = real_pose_ - target_pose_ - target_offset_;
 
 	double x_vel = 0;
 	double y_vel = 0;

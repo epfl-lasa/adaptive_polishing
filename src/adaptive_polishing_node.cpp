@@ -13,11 +13,14 @@ int main(int argc, char **argv)
 
 
   // Parameters
+  //inputs
   std::string input_rob_pose_topic_name;
+  std::string input_rob_vel_topic_name;
+  std::string input_rob_acc_topic_name;
+  std::string input_rob_force_topic_name;
+  //outputs
   std::string output_vel_topic_name;
   std::string output_filtered_vel_topic_name;
-  std::string input_rob_vel_topic_name;
-  std::string input_rob_force_ee_topic_name;
 
   //trajectory parameters
   std::vector<double> CenterRotation;
@@ -34,17 +37,22 @@ int main(int argc, char **argv)
     // return -1;
   }
 
-  if (!nh.getParam("output_vel_topic_name", output_vel_topic_name))   {
-    ROS_ERROR("Couldn't retrieve the topic name for the output. ");
-    // return -1;
-  }
-
   if (!nh.getParam("input_rob_vel_topic_name", input_rob_vel_topic_name))   {
     ROS_ERROR("Couldn't retrieve the topic name for the input. ");
     // return -1;
   }
 
-  if (!nh.getParam("input_rob_force_ee_topic_name", input_rob_force_ee_topic_name))   {
+  if (!nh.getParam("input_rob_acc_topic_name", input_rob_acc_topic_name))   {
+    ROS_ERROR("Couldn't retrieve the topic name for the input. ");
+    // return -1;
+  }
+
+  if (!nh.getParam("input_rob_force_topic_name", input_rob_force_topic_name))   {
+    ROS_ERROR("Couldn't retrieve the topic name for the output. ");
+    // return -1;
+  }
+
+  if (!nh.getParam("output_vel_topic_name", output_vel_topic_name))   {
     ROS_ERROR("Couldn't retrieve the topic name for the output. ");
     // return -1;
   }
@@ -80,10 +88,11 @@ int main(int argc, char **argv)
     nh,
     frequency,
     input_rob_pose_topic_name,
+    input_rob_vel_topic_name,
+    input_rob_acc_topic_name,
+    input_rob_force_topic_name,
     output_vel_topic_name,
     output_filtered_vel_topic_name,
-    input_rob_vel_topic_name,
-    input_rob_force_ee_topic_name,
     CenterRotation,
     radius,
     RotationSpeed,

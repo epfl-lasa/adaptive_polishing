@@ -4,6 +4,8 @@
 
 #include "MotionGenerator.h"
 
+#include "geometry_msgs/Pose2D.h"
+
 #include "MathLib.h"
 #include <vector>
 
@@ -15,7 +17,11 @@ class AdaptivePolishing : public MotionGenerator {
 private:
 
 	// Motion detail
-	std::vector<double> Cycle_Target_;
+	Eigen::Vector3d Cycle_Target_;
+
+	//publisher and msg to publish the cycle target when it is adapting
+	geometry_msgs::Pose2D msg_cycle_target_;
+	ros::Publisher pub_cycle_target_;
 
 	double Cycle_radius_;
 	double Cycle_radius_scale_;
@@ -26,6 +32,11 @@ private:
 	double Convergence_Rate_;
 	double Convergence_Rate_scale_;
 
+	// Adaptation parameters
+	double Grad_desc_step_; //step for numerical derivation
+	double Grad_desc_epsilon_; // epsilon for state adaptation
+
+
 	//dynamic reconfig setting
 	dynamic_reconfigure::Server<adaptive_polishing::polishing_paramsConfig> dyn_rec_srv_;
 	dynamic_reconfigure::Server<adaptive_polishing::polishing_paramsConfig>::CallbackType dyn_rec_f_;
@@ -35,10 +46,11 @@ public:
 	AdaptivePolishing(ros::NodeHandle &n,
 		double frequency,
 		std::string input_rob_pos_topic_name,
+		std::string input_rob_vel_topic_name,
+		std::string input_rob_acc_topic_name,
+		std::string input_rob_force_topic_name,
 		std::string output_vel_topic_name,
 		std::string output_filtered_vel_topic_name,
-		std::string input_rob_vel_topic_name,
-		std::string input_rob_force_ee_topic_name,
 		std::vector<double> CenterRotation,
 		double radius,
 		double RotationSpeed,
@@ -49,7 +61,13 @@ private:
 
 	void DynCallback(adaptive_polishing::polishing_paramsConfig &config, uint32_t level);
 
-	virtual MathLib::Vector GetVelocityFromPose(MathLib::Vector pose) override;
+	//virtual MathLib::Vector GetVelocityFromPose(MathLib::Vector pose) override;
+
+	virtual Eigen::Vector3d GetVelocityFromPose(Eigen::Vector3d pose) override;
+
+	void AdaptTrajectoryParameters(Eigen::Vector3d pose) override;
+
+	Eigen::Vector2d ComputeGradient(Eigen::Vector3d error_vel,Eigen::Vector3d pose);
 
 
 };

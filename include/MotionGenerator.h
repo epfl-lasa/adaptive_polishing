@@ -6,6 +6,8 @@
 
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/Twist.h"
+#include "geometry_msgs/Accel.h"
+#include "geometry_msgs/WrenchStamped.h"
 #include "geometry_msgs/TwistStamped.h"
 #include "geometry_msgs/PointStamped.h"
 #include "nav_msgs/Path.h"
@@ -13,6 +15,7 @@
 
 
 #include "MathLib.h"
+#include "eigen3/Eigen/Dense"
 #include "CDDynamics.h"
 
 #include <mutex>
@@ -30,14 +33,10 @@ protected:
 	ros::NodeHandle nh_;
 	ros::Rate loop_rate_;
 
-	std::string input_rob_pose_topic_name_;
-	std::string output_vel_topic_name_;
-	std::string output_filtered_vel_topic_name_;
-	std::string input_rob_vel_topic_name_;
-	std::string input_rob_force_ee_topic_name_;
-
-
 	ros::Subscriber sub_real_pose_;
+	ros::Subscriber sub_real_vel_;
+	ros::Subscriber sub_real_acc_;
+	ros::Subscriber sub_robot_force_;
 	ros::Publisher pub_desired_twist_;
 	ros::Publisher pub_desired_twist_filtered_;
 
@@ -57,7 +56,6 @@ protected:
 	ros::Publisher pub_DesiredPath_;
 
 
-
 	// geometry_msgs::Pose msg_real_pose_;
 	geometry_msgs::TwistStamped msg_desired_velocity_;
 	geometry_msgs::TwistStamped msg_desired_velocity_filtered_;
@@ -66,23 +64,29 @@ protected:
 	int MAX_FRAME = 200;
 
 
-
-	// //dynamic reconfig settig
-	// dynamic_reconfigure::Server<motionGenerator::motion_paramsConfig> dyn_rec_srv_;
-	// dynamic_reconfigure::Server<motionGenerator::motion_paramsConfig>::CallbackType dyn_rec_f_;
-
-
 	// Class variables
 	std::mutex mutex_;
 
-	MathLib::Vector real_pose_;
-	MathLib::Vector target_pose_;
-	MathLib::Vector target_offset_;
+	// MathLib::Vector real_pose_;
+	// MathLib::Vector real_vel_;
+	// MathLib::Vector real_acc_;
+	// MathLib::Vector target_pose_;
+	// MathLib::Vector target_offset_;
+	Eigen::Vector3d real_pose_;
+	Eigen::Vector3d real_vel_;
+	Eigen::Vector3d real_acc_;
+	Eigen::Vector3d target_offset_;
+	Eigen::Vector3d rob_sensed_force;
+	int FORCE_THRESHOLD = 10;
+	//create a pointer that can point to where a trajectory indicates
+	//std::unique_ptr<Eigen::Vector3d> target_pose_;
 
 	double Velocity_limit_;
 
-	MathLib::Vector desired_velocity_;
-	MathLib::Vector desired_velocity_filtered_;
+	// MathLib::Vector desired_velocity_;
+	// MathLib::Vector desired_velocity_filtered_;
+	Eigen::Vector3d desired_velocity_;
+	Eigen::Vector3d desired_velocity_filtered_;
 
 
 
@@ -90,21 +94,28 @@ public:
 	MotionGenerator(ros::NodeHandle &n,
 		double frequency,
 		std::string input_rob_pos_topic_name,
-		std::string output_vel_topic_name,
-		std::string output_filtered_vel_topic_name,
 		std::string input_rob_vel_topic_name,
-		std::string input_rob_force_ee_topic_name
+		std::string input_rob_acc_topic_name,
+		std::string input_rob_force_topic_name,
+		std::string output_vel_topic_name,
+		std::string output_filtered_vel_topic_name
         );
 
 	bool Init();
 
 	void Run();
 
-protected:
-
-	bool InitializeROS();
+private:
 
 	void UpdateRealPosition(const geometry_msgs::Pose::ConstPtr& msg);
+
+	void UpdateRealVelocity(const geometry_msgs::Twist::ConstPtr& msg);
+
+	void UpdateRealAcceleration(const geometry_msgs::Accel::ConstPtr& msg);
+
+	void UpdateRobotSensedForce(const geometry_msgs::WrenchStamped::ConstPtr& msg);
+
+	//void UpdateRobotForce(const geometry_msgs::Pose::ConstPtr& msg);
 
 	void ComputeDesiredVelocity();
 
@@ -112,7 +123,11 @@ protected:
 
 	void PublishFuturePath();
 
-	virtual MathLib::Vector GetVelocityFromPose(MathLib::Vector pose) = 0;
+protected:
+
+	virtual void AdaptTrajectoryParameters(Eigen::Vector3d pose){}
+
+	virtual Eigen::Vector3d GetVelocityFromPose(Eigen::Vector3d pose) = 0;
 
 };
 

@@ -132,8 +132,9 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   include
   ${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake
+  
 )
-
+include_directories(${EIGEN3_INCLUDE_DIR})
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
