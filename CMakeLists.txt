@@ -150,6 +150,9 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/adaptive_polishing_node.cpp)
+add_executable(adaptation_recorder_node
+  src/adaptation_recorder_node.cpp 
+  )
 
 add_executable(adaptive_polishing_node 
 	src/adaptive_polishing_node.cpp
@@ -160,6 +163,7 @@ add_executable(adaptive_polishing_node
   include/MotionGenerator.h
   include/adaptivePolishing.h
 	)
+
 
 # add_executable(active_motionGenerator_node 
 # 	${SRC_DIR}/active_motionGenerator_node.cpp
@@ -189,6 +193,7 @@ add_dependencies(adaptive_polishing_node
 # )
 
 target_link_libraries(adaptive_polishing_node ${catkin_LIBRARIES} )
+target_link_libraries(adaptation_recorder_node ${catkin_LIBRARIES} )
 
 #############
 ## Install ##

@@ -20,7 +20,7 @@ private:
 	Eigen::Vector3d Cycle_Target_;
 
 	//publisher and msg to publish the cycle target when it is adapting
-	geometry_msgs::Pose2D msg_cycle_target_;
+	geometry_msgs::Pose msg_cycle_target_;
 	ros::Publisher pub_cycle_target_;
 
 	double Cycle_radius_;

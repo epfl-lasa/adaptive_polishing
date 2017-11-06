@@ -41,7 +41,7 @@ AdaptivePolishing::AdaptivePolishing(ros::NodeHandle &n,
 	ROS_INFO_STREAM("AP.CPP: Adaptive polishing node is created at: " <<
 						 nh_.getNamespace() << " with freq: " << frequency << "Hz");
 
-	pub_cycle_target_ = nh_.advertise<geometry_msgs::Pose2D>("/adaptivePolishing/cycle_target_", 1000, 1);
+	pub_cycle_target_ = nh_.advertise<geometry_msgs::Pose>("DS/adaptivePolishing/cycle_target", 1000, 1);
 
 	dyn_rec_f_ = boost::bind(&AdaptivePolishing::DynCallback, this, _1, _2);
 	dyn_rec_srv_.setCallback(dyn_rec_f_);
@@ -50,6 +50,16 @@ AdaptivePolishing::AdaptivePolishing(ros::NodeHandle &n,
 
 Eigen::Vector3d AdaptivePolishing::GetVelocityFromPose(Eigen::Vector3d pose)
 {
+	msg_cycle_target_.position.x = Cycle_Target_(X);
+	msg_cycle_target_.position.y = Cycle_Target_(Y);
+	msg_cycle_target_.position.z = Cycle_Target_(Z);
+	msg_cycle_target_.orientation.x = 0;
+	msg_cycle_target_.orientation.y = 0;
+	msg_cycle_target_.orientation.z = 0;
+	msg_cycle_target_.orientation.w = 0;
+
+	pub_cycle_target_.publish(msg_cycle_target_);
+
 	// MathLib::Vector output_velocity;
 	// output_velocity.Resize(3);
 	Eigen::Vector3d output_velocity;
@@ -128,7 +138,7 @@ void AdaptivePolishing::DynCallback(adaptive_polishing::polishing_paramsConfig &
 
 void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 
-	ROS_INFO("I'm adaaaaaptinnng");
+	// ROS_INFO("I'm adapting");
 	//ROS_INFO("Detected human interaction, updatig the trajectory parameters ...");
 	if(Grad_desc_step_ == 0){
 		return;
@@ -144,13 +154,17 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 	Cycle_Target_(X) += Grad_desc_epsilon_*grad_J(X);
 	Cycle_Target_(Y) += Grad_desc_epsilon_*grad_J(Y);
 
-	// ROS_INFO_STREAM("gradJx: " << grad_J(X) << " gradJy: " << grad_J(Y) );
+	 // ROS_INFO_STREAM("gradJx: " << grad_J(X) << " gradJy: " << grad_J(Y) );
 
-	msg_cycle_target_.x = Cycle_Target_(X);
-	msg_cycle_target_.y = Cycle_Target_(Y);
-	msg_cycle_target_.theta = 0;
+	// msg_cycle_target_.position.x = Cycle_Target_(X);
+	// msg_cycle_target_.position.y = Cycle_Target_(Y);
+	// msg_cycle_target_.position.z = Cycle_Target_(Z);
+	// msg_cycle_target_.orientation.x = 0;
+	// msg_cycle_target_.orientation.y = 0;
+	// msg_cycle_target_.orientation.z = 0;
+	// msg_cycle_target_.orientation.w = 0;
 
-	pub_cycle_target_.publish(msg_cycle_target_);
+	// pub_cycle_target_.publish(msg_cycle_target_);
 
 }
 
@@ -183,7 +197,7 @@ Eigen::Vector2d AdaptivePolishing::ComputeGradient(Eigen::Vector3d error_vel,Eig
 
 	grad(Y) = error_vel.dot((err1-err2)/(2*Grad_desc_step_));
 
-	ROS_INFO_STREAM("gradJx: " << grad(X) << " gradJy: " << grad(Y) );
+	// ROS_INFO_STREAM("gradJx: " << grad(X) << " gradJy: " << grad(Y) );
 
 	return grad;
 }

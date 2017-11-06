@@ -16,7 +16,7 @@ MotionGenerator::MotionGenerator(ros::NodeHandle &n,
                                 )
 :nh_(n),
 loop_rate_(frequency),
-filter_Wn_(.42),
+filter_Wn_(.411),
 dt_(1 / frequency),
 Velocity_limit_(1) 
 {
