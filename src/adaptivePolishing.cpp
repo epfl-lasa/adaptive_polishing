@@ -5,43 +5,32 @@ enum Coordinate { X=0 , Y=1 , Z=2 };
 
 
 AdaptivePolishing::AdaptivePolishing(ros::NodeHandle &n,
-                                      double frequency,
-                                      std::string input_rob_pose_topic_name,
-                                      std::string input_rob_vel_topic_name,
-									  std::string input_rob_acc_topic_name,
-									  std::string input_rob_force_topic_name,
-									  std::string output_vel_topic_name,
-                                      std::string output_filtered_vel_topic_name,
-                                      std::vector<double> CenterRotation,
-        							  double radius,
-        							  double RotationSpeed,
-									  double ConvergenceRate
-                                      )
-	: MotionGenerator(n, 
-		frequency,
-		input_rob_pose_topic_name,
-		input_rob_vel_topic_name,
-		input_rob_acc_topic_name,
-		input_rob_force_topic_name,
-		output_vel_topic_name,
-		output_filtered_vel_topic_name
-		),
-	  Cycle_Target_(CenterRotation.data()),
-	  Cycle_radius_(radius),
-	  Cycle_radius_scale_(1),
-	  Cycle_speed_(RotationSpeed),
-	  Cycle_speed_offset_(0),
-	  Convergence_Rate_(ConvergenceRate),
-	  Convergence_Rate_scale_(1)
+		double frequency,
+		std::string input_rob_pose_topic_name,
+		std::string input_rob_vel_topic_name,
+		std::string input_rob_acc_topic_name,
+		std::string input_rob_force_topic_name,
+		std::string output_vel_topic_name,
+		std::string output_filtered_vel_topic_name,
+		std::vector<double> CenterRotation,
+		double radius,
+		double RotationSpeed,
+		double ConvergenceRate
+)
+	:MotionGenerator(n, frequency, input_rob_pose_topic_name,
+	input_rob_vel_topic_name, input_rob_acc_topic_name,
+	input_rob_force_topic_name, output_vel_topic_name,
+	output_filtered_vel_topic_name, true),
+	Cycle_Target_(CenterRotation.data()), Cycle_radius_(radius),
+	Cycle_radius_scale_(1), Cycle_speed_(RotationSpeed), Cycle_speed_offset_(0),
+	Convergence_Rate_(ConvergenceRate), Convergence_Rate_scale_(1)
 {
-	//set the initial target pose
-	//target_pose_.reset(new Eigen::Vector3d(Cycle_Target_));
-
 
 	ROS_INFO_STREAM("AP.CPP: Adaptive polishing node is created at: " <<
-						 nh_.getNamespace() << " with freq: " << frequency << "Hz");
+			nh_.getNamespace() << " with freq: " << frequency << "Hz");
 
-	pub_cycle_target_ = nh_.advertise<geometry_msgs::Pose>("DS/adaptivePolishing/cycle_target", 1000, 1);
+	pub_cycle_target_ = nh_.advertise<geometry_msgs::Pose>(
+			"DS/adaptivePolishing/cycle_target", 1000, 1);
 
 	dyn_rec_f_ = boost::bind(&AdaptivePolishing::DynCallback, this, _1, _2);
 	dyn_rec_srv_.setCallback(dyn_rec_f_);
@@ -60,8 +49,6 @@ Eigen::Vector3d AdaptivePolishing::GetVelocityFromPose(Eigen::Vector3d pose)
 
 	pub_cycle_target_.publish(msg_cycle_target_);
 
-	// MathLib::Vector output_velocity;
-	// output_velocity.Resize(3);
 	Eigen::Vector3d output_velocity;
 
 	Eigen::Vector3d error_pose = pose - Cycle_Target_;
@@ -69,12 +56,12 @@ Eigen::Vector3d AdaptivePolishing::GetVelocityFromPose(Eigen::Vector3d pose)
 	double R = sqrt(error_pose(X) * error_pose(X) + error_pose(Y) * error_pose(Y));
 	double T = atan2(error_pose(Y), error_pose(X));
 
-	double Rdot = - Convergence_Rate_ * Convergence_Rate_scale_ * (R - Cycle_radius_ * Cycle_radius_scale_);
+	double Rdot = -Convergence_Rate_ * Convergence_Rate_scale_ * (R - Cycle_radius_ * Cycle_radius_scale_);
 	double Tdot = Cycle_speed_ + Cycle_speed_offset_;
 
 	double x_vel = Rdot * cos(T) - R * Tdot * sin(T);
 	double y_vel = Rdot * sin(T) + R * Tdot * cos(T);
-	double z_vel = - Convergence_Rate_ * Convergence_Rate_scale_ * error_pose(Z);
+	double z_vel = -Convergence_Rate_ * Convergence_Rate_scale_ * error_pose(Z);
 
 	output_velocity(X) = x_vel;
 	output_velocity(Y) = y_vel;
@@ -83,7 +70,8 @@ Eigen::Vector3d AdaptivePolishing::GetVelocityFromPose(Eigen::Vector3d pose)
 	return output_velocity;
 }
 
-void AdaptivePolishing::DynCallback(adaptive_polishing::polishing_paramsConfig &config, uint32_t level) {
+void AdaptivePolishing::DynCallback(
+		adaptive_polishing::polishing_paramsConfig &config, uint32_t level) {
 
 
 	ROS_INFO("Reconfigure request. Updatig the parameters ...");

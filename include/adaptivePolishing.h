@@ -44,24 +44,22 @@ private:
 
 public:
 	AdaptivePolishing(ros::NodeHandle &n,
-		double frequency,
-		std::string input_rob_pos_topic_name,
-		std::string input_rob_vel_topic_name,
-		std::string input_rob_acc_topic_name,
-		std::string input_rob_force_topic_name,
-		std::string output_vel_topic_name,
-		std::string output_filtered_vel_topic_name,
-		std::vector<double> CenterRotation,
-		double radius,
-		double RotationSpeed,
-		double ConvergenceRate
-        );
+			double frequency,
+			std::string input_rob_pos_topic_name,
+			std::string input_rob_vel_topic_name,
+			std::string input_rob_acc_topic_name,
+			std::string input_rob_force_topic_name,
+			std::string output_vel_topic_name,
+			std::string output_filtered_vel_topic_name,
+			std::vector<double> CenterRotation,
+			double radius,
+			double RotationSpeed,
+			double ConvergenceRate
+	);
 
 private:
 
 	void DynCallback(adaptive_polishing::polishing_paramsConfig &config, uint32_t level);
-
-	//virtual MathLib::Vector GetVelocityFromPose(MathLib::Vector pose) override;
 
 	virtual Eigen::Vector3d GetVelocityFromPose(Eigen::Vector3d pose) override;
 

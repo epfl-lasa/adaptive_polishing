@@ -22,75 +22,60 @@
 #include <pthread.h>
 #include <signal.h>
 
-// #include <dynamic_reconfigure/server.h>
-// #include <adaptive_polishing/polishing_paramsConfig.h>
 
 class MotionGenerator {
 
 
-protected:
-
 	// ROS variables
+protected:
 	ros::NodeHandle nh_;
+private:
 	ros::Rate loop_rate_;
-
+	// subscribers and publishers
 	ros::Subscriber sub_real_pose_;
 	ros::Subscriber sub_real_vel_;
 	ros::Subscriber sub_real_acc_;
 	ros::Subscriber sub_robot_force_;
-	ros::Publisher pub_human_action_;
+	ros::Publisher pub_external_action_;
 	ros::Publisher pub_desired_twist_;
 	ros::Publisher pub_desired_twist_filtered_;
-
-
-	double dt_;
-
-
-	// Filter variables: it takes x and use Wn as gains and dx ddx as limits
-	std::unique_ptr<CDDynamics> filter_;
-	double filter_Wn_;
-	MathLib::Vector filter_dxLim_;
-	MathLib::Vector filter_ddxLim_;
-
-
-
 	ros::Publisher pub_target_;
 	ros::Publisher pub_DesiredPath_;
-
-
 	// geometry_msgs::Pose msg_real_pose_;
 	geometry_msgs::TwistStamped msg_desired_velocity_;
 	geometry_msgs::TwistStamped msg_desired_velocity_filtered_;
 
 
 	// Class variables
-	std::mutex mutex_;
+protected:
+	// time step of node
+	double dt_;
 
-	// MathLib::Vector real_pose_;
-	// MathLib::Vector real_vel_;
-	// MathLib::Vector real_acc_;
-	// MathLib::Vector target_pose_;
-	// MathLib::Vector target_offset_;
+	// Filter variables:
+	std::unique_ptr<CDDynamics> filter_;
+	double filter_Wn_;
+	MathLib::Vector filter_dxLim_; //limits
+	MathLib::Vector filter_ddxLim_;
+
+	// Vectors to store the robot state
 	Eigen::Vector3d real_pose_;
+	Eigen::Vector3d real_orientation_;
 	Eigen::Vector3d real_vel_;
 	Eigen::Vector3d real_acc_;
 	Eigen::Vector3d target_offset_;
-	Eigen::Vector3d rob_sensed_force;
-	int FORCE_THRESHOLD = 10;
-	//create a pointer that can point to where a trajectory indicates
-	//std::unique_ptr<Eigen::Vector3d> target_pose_;
+	Eigen::Vector3d rob_sensed_force_;
 
-	double Velocity_limit_;
-
-	// MathLib::Vector desired_velocity_;
-	// MathLib::Vector desired_velocity_filtered_;
+	// vectors to store the computed desired velocity
 	Eigen::Vector3d desired_velocity_;
 	Eigen::Vector3d desired_velocity_filtered_;
+	double Velocity_limit_; //speed limit
 
+	// variables for the adaptation
+	bool ADAPTABLE;
+	int FORCE_THRESHOLD = 10;
 
-	//boolean to make sure we have received at least one position
-	bool gotFirstPosition_ = false;
-
+private:
+	std::mutex mutex_;
 	//thread to publish futur path
 	pthread_t thread_;
 	bool startThread_;
@@ -98,7 +83,10 @@ protected:
 	nav_msgs::Path msg_DesiredPath_;
 	int MAX_FRAME = 200;
 
-	//so we can stop
+	// check if we have received the first position
+	// also needed to start publishing the futur path
+	bool gotFirstPosition_ = false;
+
 	static MotionGenerator* me;
 	bool stop_ = false;
 
@@ -110,8 +98,9 @@ public:
 		std::string input_rob_acc_topic_name,
 		std::string input_rob_force_topic_name,
 		std::string output_vel_topic_name,
-		std::string output_filtered_vel_topic_name
-        );
+		std::string output_filtered_vel_topic_name,
+		bool adaptable = false
+		);
 
 	bool Init();
 
@@ -127,19 +116,25 @@ private:
 
 	void UpdateRobotSensedForce(const geometry_msgs::WrenchStamped::ConstPtr& msg);
 
-	//void UpdateRobotForce(const geometry_msgs::Pose::ConstPtr& msg);
 
 	void ComputeDesiredVelocity();
 
 	void PublishDesiredVelocity();
 
-	//publish predicted path and 2 functions to set in on another thread
+	void DSAdaptation();
+
+
+	/*Set of 3 functions to compute the forward integral of the desired velocity
+	* (the estimated path).The computation is done on another thread to prevent the node from slowing down
+	*/
 	void PublishFuturePath();
 
 	static void* startPathPublishingLoop(void* ptr);
 
 	void pathPublishingLoop();
 
+
+	// Function called when the node is killed through CTRL + C
 	static void stopNode(int sig);
 
 protected:

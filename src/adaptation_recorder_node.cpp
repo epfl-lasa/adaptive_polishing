@@ -19,7 +19,7 @@
 
 using namespace std;
 
-
+#define BUFFER_SIZE 1
 
 class AdaptationRecorder {
 
@@ -82,9 +82,6 @@ private:
 	ros::Subscriber sub_CycleTarget_;
 
 	ros::Subscriber sub_DesiredPath_;
-public:
-	static int counter;
-
 
 
 public:
@@ -120,29 +117,31 @@ public:
 		string recPathFile_positionReal = recPath_ + "/position_real.txt";
 		file_positionReal_.open(recPathFile_positionReal);
 		file_positionReal_  << "Time" << "\t" << "x" << "\t" << "y" << "\t" << "z"
-		                    << "\t" << "rx" << "\t" << "ry" << "\t" << "rz" << "\t" << "rw" << "\n";
-		sub_positionReal_ = nh_.subscribe("/lwr/ee_pose" , 1000, &AdaptationRecorder::GetPositionReal, this);
+		                    << "\t" << "rx" << "\t" << "ry" << "\t" << "rz" << "\t"
+		                    << "rw" << "\n";
+		sub_positionReal_ = nh_.subscribe("/lwr/ee_pose" , BUFFER_SIZE,
+				&AdaptationRecorder::GetPositionReal, this);
 
 
 		string recPathFile_CycleTarget = recPath_ + "/cycle_target.txt";
 		file_CycleTarget_.open(recPathFile_CycleTarget);
 		file_CycleTarget_  << "Time" << "\t" << "x" << "\t" << "y" << "\t" << "z"
 		                    << "\t" << "rx" << "\t" << "ry" << "\t" << "rz" << "\t" << "rw" << "\n";
-		sub_CycleTarget_ = nh_.subscribe("/ds1/DS/adaptivePolishing/cycle_target" , 1000, &AdaptationRecorder::GetCycleTarget, this);
+		sub_CycleTarget_ = nh_.subscribe("/ds1/DS/adaptivePolishing/cycle_target" , BUFFER_SIZE, &AdaptationRecorder::GetCycleTarget, this);
 
 
 		string recPathFile_DesiredPath = recPath_ + "/desired_path.txt";
 		file_DesiredPath_.open(recPathFile_DesiredPath);
 		file_DesiredPath_  << "Time" << "\t" << "x" << "\t" << "y" << "\t" << "z"
 		                    << "\t" << "rx" << "\t" << "ry" << "\t" << "rz" << "\t" << "rw" << "\n";
-		sub_DesiredPath_ = nh_.subscribe("/ds1/DS/DesiredPath" , 1000, &AdaptationRecorder::GetDesiredPath, this);
+		sub_DesiredPath_ = nh_.subscribe("/ds1/DS/DesiredPath" , BUFFER_SIZE, &AdaptationRecorder::GetDesiredPath, this);
 
 
 		string recPathFile_velocityReal = recPath_ + "/velocity_real.txt";
 		file_velocityReal_.open(recPathFile_velocityReal);
 		file_velocityReal_ << "Time" << "\t" << "x" << "\t" << "y" << "\t" << "z"
 		                   << "\t" << "rx" << "\t" << "ry" << "\t" << "rz" << "\n";
-		sub_velocityReal_ = nh_.subscribe("/lwr/ee_vel" , 1000, &AdaptationRecorder::GetVelocityReal, this);
+		sub_velocityReal_ = nh_.subscribe("/lwr/ee_vel" , BUFFER_SIZE, &AdaptationRecorder::GetVelocityReal, this);
 
 		// string recPathFile_acceleratonReal = recPath_ + "/acceleration_real.txt";
 		// file_accelerationReal_.open(recPathFile_acceleratonReal);
@@ -155,13 +154,13 @@ public:
 		file_forceReal_.open(recPathFile_forceReal);
 		file_forceReal_ << "Time" << "\t" << "x" << "\t" << "y" << "\t" << "z"
 		                << "\t" << "rx" << "\t" << "ry" << "\t" << "rz" << "\n";
-		sub_force_real_ = nh_.subscribe("/ds1/DS/human_force" , 1000, &AdaptationRecorder::GetForceReal, this);
+		sub_force_real_ = nh_.subscribe("/ds1/DS/human_force" , BUFFER_SIZE, &AdaptationRecorder::GetForceReal, this);
 
 
 		string recPathFile_velocityDesired = recPath_ + "/velocity_desired.txt";
 		file_velocityDesired_.open(recPathFile_velocityDesired);
 		file_velocityDesired_ << "Time" << "\t" << "x" << "\t" << "y" << "\t" << "z" << "\n";
-		sub_velocityDesired_ = nh_.subscribe("/lwr/joint_controllers/passive_ds_command_vel" , 1000, &AdaptationRecorder::GetVelocityDesired, this);
+		sub_velocityDesired_ = nh_.subscribe("/lwr/joint_controllers/passive_ds_command_vel" , BUFFER_SIZE, &AdaptationRecorder::GetVelocityDesired, this);
 
 		// string recPathFile_orientationsDesired = recPath_ + "/orientation_desired.txt";
 		// file_orientationDesired_.open(recPathFile_orientationsDesired);
@@ -216,12 +215,7 @@ public:
 		// string recPathFile_controlGain = recPath_ + "/control_gains.txt";
 		// file_control_gains_.open(recPathFile_controlGain);
 		// file_control_gains_ << "Time" << "\t" << "D0" << "\t" << "D1" << "\n";
-
-
-
-
 	}
-
 
 	void Run() {
 
@@ -249,8 +243,6 @@ public:
 
 	void GetCycleTarget(const geometry_msgs::Pose::ConstPtr& msg)
 	{
-		if(counter % 200 == 0)
-		{
 		file_CycleTarget_  << ros::Time::now()	<< "\t"
 		                    << msg->position.x 	<< "\t"
 		                    << msg->position.y 	<< "\t"
@@ -259,26 +251,22 @@ public:
 		                    << msg->orientation.y << "\t"
 		                    << msg->orientation.z << "\t"
 		                    << msg->orientation.w << "\n";
-		}
 	}
+
 
 	void GetDesiredPath(const nav_msgs::Path::ConstPtr& msg)
 	{
-		counter++;
-		if(counter == 2000)
+		for(int i = 0; i<200 ;i ++)
 		{
-			counter = 0;
-			for(int i = 0; i<200 ;i ++)
-			{
-				file_DesiredPath_  << ros::Time::now()	<< "\t"
-			                    << msg->poses[i].pose.position.x 	<< "\t"
-			                    << msg->poses[i].pose.position.y 	<< "\t"
-			                    << msg->poses[i].pose.position.z 	<< "\t"
-			                    << msg->poses[i].pose.orientation.x << "\t"
-			                    << msg->poses[i].pose.orientation.y << "\t"
-			                    << msg->poses[i].pose.orientation.z << "\t"
-			                    << msg->poses[i].pose.orientation.w << "\n";
-			}
+			file_DesiredPath_  << ros::Time::now()	<< "\t"
+		                    << msg->poses[i].pose.position.x 	<< "\t"
+		                    << msg->poses[i].pose.position.y 	<< "\t"
+		                    << msg->poses[i].pose.position.z 	<< "\t"
+		                    << msg->poses[i].pose.orientation.x << "\t"
+		                    << msg->poses[i].pose.orientation.y << "\t"
+		                    << msg->poses[i].pose.orientation.z << "\t"
+		                    << msg->poses[i].pose.orientation.w << "\n";
+		
 		}
 	}
 
@@ -388,17 +376,12 @@ public:
 		                     << msg->data[4] 	<< "\n";
 	}
 };
-int AdaptationRecorder::counter(0);
-
-
-
 
 
 int main(int argc, char **argv)
 {
 	//Initiate ROS
 	ros::init(argc, argv, "record_adaptation");
-
 
 	ros::NodeHandle nh;
 	double frequency = 100.0;

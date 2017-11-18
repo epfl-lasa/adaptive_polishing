@@ -10,7 +10,7 @@
     <param name="output_filtered_vel_topic_name" value="/filtered_output"/>
     <rosparam command="load" file="$(find adaptive_polishing)/config/polishing_init_param.yml"/>   
     <node name="main_node" pkg="adaptive_polishing" type="adaptive_polishing_node" output="screen"/>
-    <node name="TA_record" pkg="adaptive_polishing" type="adaptation_recorder_node" output="screen"/>
+    <!-- <node name="TA_record" pkg="adaptive_polishing" type="adaptation_recorder_node" output="screen"/> -->
   </group>
 
  <!--node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" />-->
