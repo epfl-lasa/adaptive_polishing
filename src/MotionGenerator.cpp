@@ -284,10 +284,8 @@ void MotionGenerator::PublishDesiredVelocity() {
 
 void MotionGenerator::DSAdaptation(){
 
-	Eigen::Vector3d pose = real_pose_ - target_offset_; 
-
-	if(rob_sensed_force_.segment(0,2).norm()>FORCE_THRESHOLD && ADAPTABLE){
-		AdaptTrajectoryParameters(pose);
+	if(ADAPTABLE){
+		AdaptTrajectoryParameters(real_pose_ - target_offset_);
 	}
 }
 
@@ -334,7 +332,7 @@ void MotionGenerator::PublishFuturePath() {
 
 void* MotionGenerator::startPathPublishingLoop(void* ptr)
 {
-    reinterpret_cast<MotionGenerator *>(ptr)->pathPublishingLoop(); 
+	reinterpret_cast<MotionGenerator *>(ptr)->pathPublishingLoop(); 
 }
 
 

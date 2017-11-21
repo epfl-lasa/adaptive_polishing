@@ -156,10 +156,8 @@ add_executable(adaptation_recorder_node
 
 add_executable(adaptive_polishing_node 
 	src/adaptive_polishing_node.cpp
-	# src/adaptive_polishing.cpp
   src/MotionGenerator.cpp
   src/adaptivePolishing.cpp
-	# include/adaptive_polishing.h
   include/MotionGenerator.h
   include/adaptivePolishing.h
 	)

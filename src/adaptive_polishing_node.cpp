@@ -25,8 +25,13 @@ int main(int argc, char **argv)
   //trajectory parameters
   std::vector<double> CenterRotation;
   double radius;
+  double major_axis_scale;
+  double minor_axis_scale;
+  double alpha;
   double RotationSpeed;
   double ConvergenceRate;
+
+  std::vector<double> adaptable_parameters;
 
   int my_int_param;
   std::vector<double> my_vec_param;
@@ -68,9 +73,25 @@ int main(int argc, char **argv)
   }
 
   if (!nh.getParam("radius", radius))   {
-    ROS_ERROR("Couldn't retrieve the radius of the rotation. ");
+    ROS_ERROR("Couldn't retrieve the radius rotation. ");
     // return -1;
   }
+
+  if (!nh.getParam("major_axis_scale", major_axis_scale))   {
+    ROS_ERROR("Couldn't retrieve the major axis of the rotation. ");
+    // return -1;
+  }
+
+  if (!nh.getParam("minor_axis_scale", minor_axis_scale))   {
+    ROS_ERROR("Couldn't retrieve the minor axis of the rotation. ");
+    // return -1;
+  }
+
+  if (!nh.getParam("alpha", alpha))   {
+    ROS_ERROR("Couldn't retrieve the orientation of the rotation. ");
+    // return -1;
+  }
+  alpha = alpha/180*M_PI;
 
   if (!nh.getParam("RotationSpeed", RotationSpeed))  {
     ROS_ERROR("Couldn't retrieve the rotation speed.");
@@ -79,6 +100,11 @@ int main(int argc, char **argv)
 
   if (!nh.getParam("ConvergenceRate", ConvergenceRate)) {
     ROS_ERROR("Couldn't retrieve the convergence speed. ");
+    // return -1;
+  }
+
+  if (!nh.getParam("adaptable_parameters", adaptable_parameters))   {
+    ROS_ERROR("Couldn't retrieve the orientation of the rotation. ");
     // return -1;
   }
 
@@ -95,6 +121,10 @@ int main(int argc, char **argv)
     output_filtered_vel_topic_name,
     CenterRotation,
     radius,
+    major_axis_scale,
+    minor_axis_scale,
+    alpha,
+    adaptable_parameters,
     RotationSpeed,
     ConvergenceRate);
 

@@ -1,4 +1,9 @@
-CenterRotation: [-0.5 ,0,0.4]
-radius: 0.1
-RotationSpeed:  3.5 # this is in rad/s
+CenterRotation: [-0.5, 0, 0.4]
+radius : 0.1
+major_axis_scale : 0.8
+minor_axis_scale : 2
+alpha: 90
+#semi_axis_a_scale, semi_axis_b_scale, orientation, offset x,y,z boolean 
+adaptable_parameters: [1, 1, 1, 1, 1, 1] 
+RotationSpeed: 3.5 # this is in rad/s
 ConvergenceRate: 3.5

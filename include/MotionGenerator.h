@@ -70,9 +70,8 @@ protected:
 	Eigen::Vector3d desired_velocity_filtered_;
 	double Velocity_limit_; //speed limit
 
-	// variables for the adaptation
+	// boolean for the adaptation
 	bool ADAPTABLE;
-	int FORCE_THRESHOLD = 10;
 
 private:
 	std::mutex mutex_;
@@ -125,7 +124,8 @@ private:
 
 
 	/*Set of 3 functions to compute the forward integral of the desired velocity
-	* (the estimated path).The computation is done on another thread to prevent the node from slowing down
+	* (the estimated path).The computation is done on another thread to prevent 
+	* the node from slowing down
 	*/
 	void PublishFuturePath();
 

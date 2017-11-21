@@ -16,6 +16,10 @@ class AdaptivePolishing : public MotionGenerator {
 
 private:
 
+	struct Parameter{
+		double val;
+		bool adapt;
+	};
 	// Motion detail
 	Eigen::Vector3d Cycle_Target_;
 
@@ -23,18 +27,17 @@ private:
 	geometry_msgs::Pose msg_cycle_target_;
 	ros::Publisher pub_cycle_target_;
 
-	double Cycle_radius_;
-	double Cycle_radius_scale_;
 
+	double Cycle_radius_;
 	double Cycle_speed_;
 	double Cycle_speed_offset_;
-
 	double Convergence_Rate_;
 	double Convergence_Rate_scale_;
 
 	// Adaptation parameters
 	double Grad_desc_step_; //step for numerical derivation
 	double Grad_desc_epsilon_; // epsilon for state adaptation
+	std::vector<Parameter> parameters_;
 
 
 	//dynamic reconfig setting
@@ -52,20 +55,26 @@ public:
 			std::string output_vel_topic_name,
 			std::string output_filtered_vel_topic_name,
 			std::vector<double> CenterRotation,
-			double radius,
+			double Cycle_radius,
+			double major_axis_scale,
+			double minor_axis_scale,
+			double alpha,
+			std::vector<double> adaptable_parameters,
 			double RotationSpeed,
 			double ConvergenceRate
 	);
 
 private:
 
-	void DynCallback(adaptive_polishing::polishing_paramsConfig &config, uint32_t level);
+	void DynCallback(adaptive_polishing::polishing_paramsConfig &config, 
+			uint32_t level);
 
 	virtual Eigen::Vector3d GetVelocityFromPose(Eigen::Vector3d pose) override;
 
 	void AdaptTrajectoryParameters(Eigen::Vector3d pose) override;
 
-	Eigen::Vector2d ComputeGradient(Eigen::Vector3d error_vel,Eigen::Vector3d pose);
+	Eigen::Vector2d ComputeGradient(Eigen::Vector3d error_vel,
+			Eigen::Vector3d pose);
 
 
 };
