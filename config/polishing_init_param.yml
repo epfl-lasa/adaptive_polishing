@@ -4,6 +4,6 @@ major_axis_scale : 0.8
 minor_axis_scale : 2
 alpha: 90
 #semi_axis_a_scale, semi_axis_b_scale, orientation, offset x,y,z boolean 
-adaptable_parameters: [1, 1, 1, 1, 1, 1] 
+adaptable_parameters: [1, 1, 0, 0, 0, 0] 
 RotationSpeed: 3.5 # this is in rad/s
 ConvergenceRate: 3.5

@@ -19,6 +19,7 @@ private:
 	struct Parameter{
 		double val;
 		bool adapt;
+		double scale;
 	};
 	// Motion detail
 	Eigen::Vector3d Cycle_Target_;

@@ -1,6 +1,6 @@
 #include "adaptivePolishing.h"
 
-#define POWER_THRESHOLD 3.0
+#define POWER_THRESHOLD 0.4
 #define FORCE_THRESHOLD 10.0
 #define WORKSPACE_UP_BOUND 10
 #define numParams 6
@@ -36,21 +36,26 @@ AdaptivePolishing::AdaptivePolishing(ros::NodeHandle &n,
 
 	parameters_[SEMI_AXIS_A].val = minor_axis_scale;
 	parameters_[SEMI_AXIS_A].adapt = adaptable_parameters[SEMI_AXIS_A];
+	parameters_[SEMI_AXIS_A].scale = 100;
 
 	parameters_[SEMI_AXIS_B].val = major_axis_scale;
 	parameters_[SEMI_AXIS_B].adapt = adaptable_parameters[SEMI_AXIS_B];
+	parameters_[SEMI_AXIS_A].scale = 100;
 
 	parameters_[ALPHA].val = alpha;
 	parameters_[ALPHA].adapt = adaptable_parameters[ALPHA];
 
 	parameters_[OFFSET_X].val = CenterRotation[X];
 	parameters_[OFFSET_X].adapt = adaptable_parameters[OFFSET_X];
+	parameters_[OFFSET_X].scale = 1;
 
 	parameters_[OFFSET_Y].val = CenterRotation[Y];
 	parameters_[OFFSET_Y].adapt = adaptable_parameters[OFFSET_Y];
+	parameters_[OFFSET_Z].scale = 1;
 
 	parameters_[OFFSET_Z].val = CenterRotation[Z];
 	parameters_[OFFSET_Z].adapt = adaptable_parameters[OFFSET_Z];
+	parameters_[OFFSET_Z].scale = 1;
 
 	ROS_INFO_STREAM("AP.CPP: Adaptive polishing node is created at: " <<
 			nh_.getNamespace() << " with freq: " << frequency << "Hz");
@@ -230,7 +235,8 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 			//compute gradient
 			grad_J = error_vel.dot((err1-err2)/(2*Grad_desc_step_));
 			//modify the concerned parameter
-			param.val += Grad_desc_epsilon_*grad_J;
+			param.val += Grad_desc_epsilon_*grad_J*param.scale;
+			ROS_INFO_STREAM("Grad is:" << grad_J);
 		}
 	}
 	
