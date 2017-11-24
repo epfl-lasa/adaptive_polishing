@@ -23,11 +23,9 @@ int main(int argc, char **argv)
   std::string output_filtered_vel_topic_name;
 
   //trajectory parameters
-  std::vector<double> CenterRotation;
-  double radius;
-  double major_axis_scale;
-  double minor_axis_scale;
-  double alpha;
+  std::vector<double> parameters;
+  std::vector<double> min_param;
+  std::vector<double> max_param;
   double RotationSpeed;
   double ConvergenceRate;
 
@@ -67,31 +65,25 @@ int main(int argc, char **argv)
     // return -1;
   }
 
-  if (!nh.getParam("CenterRotation", CenterRotation))   {
-    ROS_ERROR("Couldn't retrieve the center of rotation. ");
+  if (!nh.getParam("parameters", parameters))   {
+    ROS_ERROR("Couldn't retrieve the parameters. ");
     // return -1;
   }
 
-  if (!nh.getParam("radius", radius))   {
-    ROS_ERROR("Couldn't retrieve the radius rotation. ");
+  if (!nh.getParam("min", min_param))   {
+    ROS_ERROR("Couldn't retrieve the parameters. ");
     // return -1;
   }
 
-  if (!nh.getParam("major_axis_scale", major_axis_scale))   {
-    ROS_ERROR("Couldn't retrieve the major axis of the rotation. ");
+  if (!nh.getParam("max", max_param))   {
+    ROS_ERROR("Couldn't retrieve the parameters. ");
     // return -1;
   }
 
-  if (!nh.getParam("minor_axis_scale", minor_axis_scale))   {
-    ROS_ERROR("Couldn't retrieve the minor axis of the rotation. ");
-    // return -1;
-  }
-
-  if (!nh.getParam("alpha", alpha))   {
+  if (!nh.getParam("adaptable_parameters", adaptable_parameters))   {
     ROS_ERROR("Couldn't retrieve the orientation of the rotation. ");
     // return -1;
   }
-  alpha = alpha/180*M_PI;
 
   if (!nh.getParam("RotationSpeed", RotationSpeed))  {
     ROS_ERROR("Couldn't retrieve the rotation speed.");
@@ -103,10 +95,6 @@ int main(int argc, char **argv)
     // return -1;
   }
 
-  if (!nh.getParam("adaptable_parameters", adaptable_parameters))   {
-    ROS_ERROR("Couldn't retrieve the orientation of the rotation. ");
-    // return -1;
-  }
 
   ROS_INFO("Starting the Motion generator... and guess what? doing nothing!");
 
@@ -119,11 +107,9 @@ int main(int argc, char **argv)
     input_rob_force_topic_name,
     output_vel_topic_name,
     output_filtered_vel_topic_name,
-    CenterRotation,
-    radius,
-    major_axis_scale,
-    minor_axis_scale,
-    alpha,
+    parameters,
+    min_param,
+    max_param,
     adaptable_parameters,
     RotationSpeed,
     ConvergenceRate);

@@ -19,6 +19,11 @@ private:
 	struct Parameter{
 		double val;
 		bool adapt;
+		double min;
+		double max;
+		double prev_grad;
+		double confidence;
+
 	};
 	// Motion detail
 	Eigen::Vector3d Cycle_Target_;
@@ -38,6 +43,10 @@ private:
 	double Grad_desc_step_; //step for numerical derivation
 	double Grad_desc_epsilon_; // epsilon for state adaptation
 	std::vector<Parameter> parameters_;
+	std::vector<double> confidence_;
+	double p_ = 0.95;
+	std::vector<double> prev_grad_;
+
 
 
 	//dynamic reconfig setting
@@ -54,11 +63,9 @@ public:
 			std::string input_rob_force_topic_name,
 			std::string output_vel_topic_name,
 			std::string output_filtered_vel_topic_name,
-			std::vector<double> CenterRotation,
-			double Cycle_radius,
-			double major_axis_scale,
-			double minor_axis_scale,
-			double alpha,
+			std::vector<double> parameters,
+			std::vector<double> min_parameters,
+			std::vector<double> max_parameters,
 			std::vector<double> adaptable_parameters,
 			double RotationSpeed,
 			double ConvergenceRate
@@ -72,9 +79,6 @@ private:
 	virtual Eigen::Vector3d GetVelocityFromPose(Eigen::Vector3d pose) override;
 
 	void AdaptTrajectoryParameters(Eigen::Vector3d pose) override;
-
-	Eigen::Vector2d ComputeGradient(Eigen::Vector3d error_vel,
-			Eigen::Vector3d pose);
 
 
 };

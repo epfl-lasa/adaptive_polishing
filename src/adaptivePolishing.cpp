@@ -3,7 +3,13 @@
 #define POWER_THRESHOLD 3.0
 #define FORCE_THRESHOLD 10.0
 #define WORKSPACE_UP_BOUND 10
-#define numParams 6
+#define NUM_PARAMS 6
+
+//MACROS
+#define SCALE(VAL, MIN, MAX) ( ((VAL)-(MIN)) / ((MAX)-(MIN)) )
+#define SCALE_BACK(VAL, MIN, MAX) ( (VAL)*((MAX)-(MIN)) + (MIN) )
+#define MIN(X, Y)  ((X) < (Y) ? (X) : (Y))
+#define MAX(X, Y)  ((X) > (Y) ? (X) : (Y))
 
 enum Coordinate { X=0 , Y=1 , Z=2 };
 enum Params {SEMI_AXIS_A ,SEMI_AXIS_B,ALPHA,OFFSET_X,OFFSET_Y,OFFSET_Z};
@@ -16,11 +22,9 @@ AdaptivePolishing::AdaptivePolishing(ros::NodeHandle &n,
 		std::string input_rob_force_topic_name,
 		std::string output_vel_topic_name,
 		std::string output_filtered_vel_topic_name,
-		std::vector<double> CenterRotation,
-		double Cycle_radius,
-		double major_axis_scale,
-		double minor_axis_scale,
-		double alpha,
+		std::vector<double> parameters,
+		std::vector<double> min_parameters,
+		std::vector<double> max_parameters,
 		std::vector<double> adaptable_parameters,
 		double RotationSpeed,
 		double ConvergenceRate
@@ -30,27 +34,23 @@ AdaptivePolishing::AdaptivePolishing(ros::NodeHandle &n,
 	input_rob_force_topic_name, output_vel_topic_name,
 	output_filtered_vel_topic_name, true), Cycle_speed_(RotationSpeed),
 	Cycle_speed_offset_(0), Convergence_Rate_(ConvergenceRate),
-	Convergence_Rate_scale_(1),Cycle_radius_(Cycle_radius)
+	Convergence_Rate_scale_(1),Cycle_radius_(1)
 {
-	parameters_.resize(numParams);
+	parameters_.resize(NUM_PARAMS);
+	confidence_.resize(NUM_PARAMS);
+	prev_grad_.resize(NUM_PARAMS);
 
-	parameters_[SEMI_AXIS_A].val = minor_axis_scale;
-	parameters_[SEMI_AXIS_A].adapt = adaptable_parameters[SEMI_AXIS_A];
+	for(int i= 0; i<parameters_.size();i++){
 
-	parameters_[SEMI_AXIS_B].val = major_axis_scale;
-	parameters_[SEMI_AXIS_B].adapt = adaptable_parameters[SEMI_AXIS_B];
+		parameters_[i].val = parameters[i];
+		parameters_[i].adapt = adaptable_parameters[i];
+		parameters_[i].min = min_parameters[i];
+		parameters_[i].max = max_parameters[i];
+		parameters_[i].prev_grad = 0;
+		parameters_[i].confidence = 1;
 
-	parameters_[ALPHA].val = alpha;
-	parameters_[ALPHA].adapt = adaptable_parameters[ALPHA];
+	}
 
-	parameters_[OFFSET_X].val = CenterRotation[X];
-	parameters_[OFFSET_X].adapt = adaptable_parameters[OFFSET_X];
-
-	parameters_[OFFSET_Y].val = CenterRotation[Y];
-	parameters_[OFFSET_Y].adapt = adaptable_parameters[OFFSET_Y];
-
-	parameters_[OFFSET_Z].val = CenterRotation[Z];
-	parameters_[OFFSET_Z].adapt = adaptable_parameters[OFFSET_Z];
 
 	ROS_INFO_STREAM("AP.CPP: Adaptive polishing node is created at: " <<
 			nh_.getNamespace() << " with freq: " << frequency << "Hz");
@@ -80,6 +80,7 @@ Eigen::Vector3d AdaptivePolishing::GetVelocityFromPose(Eigen::Vector3d pose)
 			parameters_[OFFSET_Z].val;
 
 	double alpha = parameters_[ALPHA].val;
+	alpha = alpha/180*M_PI;
 
 	Eigen::Matrix3d rot;
 	rot <<  cos(alpha), -sin(alpha), 0,
@@ -218,76 +219,42 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 	for(auto& param : parameters_){
 		if(param.adapt)
 		{
+			double save = param.val;
+
+			// normalize the parameter
+			double tmp = param.val;
+			tmp = SCALE(tmp,param.min,param.max);
+
 			//compute backward derivative
-			param.val -= Grad_desc_step_;
+			tmp -= Grad_desc_step_;
+			param.val = SCALE_BACK(tmp,param.min,param.max);
 			err1 = GetVelocityFromPose(pose);
-			param.val += Grad_desc_step_;
+			tmp += Grad_desc_step_;
+
 			//compute forward derivative
-			param.val += Grad_desc_step_;
+			tmp += Grad_desc_step_;
+			param.val = SCALE_BACK(tmp,param.min,param.max);
 			err2 = GetVelocityFromPose(pose);
-			param.val -= Grad_desc_step_;
+			tmp -= Grad_desc_step_;
 
 			//compute gradient
 			grad_J = error_vel.dot((err1-err2)/(2*Grad_desc_step_));
+			param.confidence = p_*param.confidence + 
+					(1-p_)*pow(grad_J - param.prev_grad,2);
+					
+			param.prev_grad = grad_J;
+
+			param.confidence = MIN(param.confidence,0.01);
 			//modify the concerned parameter
-			param.val += Grad_desc_epsilon_*grad_J;
+			tmp += (Grad_desc_epsilon_*grad_J)/param.confidence;
+			param.val = SCALE_BACK(tmp,param.min,param.max);
+
+			//set buondaries
+			param.val = MIN(param.val,param.max);
+			param.val = MAX(param.val,param.min);
 		}
 	}
-	
-
-	//Eigen::Vector2d grad_J = ComputeGradient(error_vel,pose);
-
-	//Cycle_Target_(X) += Grad_desc_epsilon_*grad_J(X);
-	//Cycle_Target_(Y) += Grad_desc_epsilon_*grad_J(Y);
-
-	 // ROS_INFO_STREAM("gradJx: " << grad_J(X) << " gradJy: " << grad_J(Y) );
-
-	// msg_cycle_target_.position.x = Cycle_Target_(X);
-	// msg_cycle_target_.position.y = Cycle_Target_(Y);
-	// msg_cycle_target_.position.z = Cycle_Target_(Z);
-	// msg_cycle_target_.orientation.x = 0;
-	// msg_cycle_target_.orientation.y = 0;
-	// msg_cycle_target_.orientation.z = 0;
-	// msg_cycle_target_.orientation.w = 0;
-
-	// pub_cycle_target_.publish(msg_cycle_target_);
-
 }
-
-Eigen::Vector2d AdaptivePolishing::ComputeGradient(Eigen::Vector3d error_vel,Eigen::Vector3d pose){
-
-
-	//initialise the gradient vector
-	Eigen::Vector2d grad;
-
-	Eigen::Vector3d err1;
-	Eigen::Vector3d err2;
-
-	Cycle_Target_(X) -= Grad_desc_step_;
-	err1 = GetVelocityFromPose(pose);
-	Cycle_Target_(X) += Grad_desc_step_;
-
-	Cycle_Target_(X) += Grad_desc_step_;
-	err2 = GetVelocityFromPose(pose);
-	Cycle_Target_(X) -= Grad_desc_step_;
-
-	grad(X) = error_vel.dot((err1-err2)/(2*Grad_desc_step_));
-
-	Cycle_Target_(Y) -= Grad_desc_step_;
-	err1 = GetVelocityFromPose(pose);
-	Cycle_Target_(Y) += Grad_desc_step_;
-
-	Cycle_Target_(Y) += Grad_desc_step_;
-	err2 = GetVelocityFromPose(pose);
-	Cycle_Target_(Y) -= Grad_desc_step_;
-
-	grad(Y) = error_vel.dot((err1-err2)/(2*Grad_desc_step_));
-
-	// ROS_INFO_STREAM("gradJx: " << grad(X) << " gradJy: " << grad(Y) );
-
-	return grad;
-}
-
 
 
 
