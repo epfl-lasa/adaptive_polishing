@@ -1,6 +1,6 @@
 #include "adaptivePolishing.h"
 
-#define POWER_THRESHOLD 3.0
+#define POWER_THRESHOLD 0.4
 #define FORCE_THRESHOLD 10.0
 #define WORKSPACE_UP_BOUND 10
 #define NUM_PARAMS 6
@@ -36,12 +36,25 @@ AdaptivePolishing::AdaptivePolishing(ros::NodeHandle &n,
 	Cycle_speed_offset_(0), Convergence_Rate_(ConvergenceRate),
 	Convergence_Rate_scale_(1),Cycle_radius_(1)
 {
+<<<<<<< HEAD
 	parameters_.resize(NUM_PARAMS);
 	confidence_.resize(NUM_PARAMS);
 	prev_grad_.resize(NUM_PARAMS);
+=======
+	parameters_.resize(numParams);
+
+	parameters_[SEMI_AXIS_A].val = minor_axis_scale;
+	parameters_[SEMI_AXIS_A].adapt = adaptable_parameters[SEMI_AXIS_A];
+	parameters_[SEMI_AXIS_A].scale = 100;
+
+	parameters_[SEMI_AXIS_B].val = major_axis_scale;
+	parameters_[SEMI_AXIS_B].adapt = adaptable_parameters[SEMI_AXIS_B];
+	parameters_[SEMI_AXIS_A].scale = 100;
+>>>>>>> df125aa2eab4e8f77580a564563aacacf3a19a79
 
 	for(int i= 0; i<parameters_.size();i++){
 
+<<<<<<< HEAD
 		parameters_[i].val = parameters[i];
 		parameters_[i].adapt = adaptable_parameters[i];
 		parameters_[i].min = min_parameters[i];
@@ -51,6 +64,19 @@ AdaptivePolishing::AdaptivePolishing(ros::NodeHandle &n,
 
 	}
 
+=======
+	parameters_[OFFSET_X].val = CenterRotation[X];
+	parameters_[OFFSET_X].adapt = adaptable_parameters[OFFSET_X];
+	parameters_[OFFSET_X].scale = 1;
+
+	parameters_[OFFSET_Y].val = CenterRotation[Y];
+	parameters_[OFFSET_Y].adapt = adaptable_parameters[OFFSET_Y];
+	parameters_[OFFSET_Z].scale = 1;
+
+	parameters_[OFFSET_Z].val = CenterRotation[Z];
+	parameters_[OFFSET_Z].adapt = adaptable_parameters[OFFSET_Z];
+	parameters_[OFFSET_Z].scale = 1;
+>>>>>>> df125aa2eab4e8f77580a564563aacacf3a19a79
 
 	ROS_INFO_STREAM("AP.CPP: Adaptive polishing node is created at: " <<
 			nh_.getNamespace() << " with freq: " << frequency << "Hz");
@@ -246,12 +272,17 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 
 			param.confidence = MIN(param.confidence,0.01);
 			//modify the concerned parameter
+<<<<<<< HEAD
 			tmp += (Grad_desc_epsilon_*grad_J)/param.confidence;
 			param.val = SCALE_BACK(tmp,param.min,param.max);
 
 			//set buondaries
 			param.val = MIN(param.val,param.max);
 			param.val = MAX(param.val,param.min);
+=======
+			param.val += Grad_desc_epsilon_*grad_J*param.scale;
+			ROS_INFO_STREAM("Grad is:" << grad_J);
+>>>>>>> df125aa2eab4e8f77580a564563aacacf3a19a79
 		}
 	}
 }
