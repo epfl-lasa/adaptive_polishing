@@ -70,21 +70,26 @@ protected:
 	Eigen::Vector3d desired_velocity_filtered_;
 	double Velocity_limit_; //speed limit
 
-	// boolean for the adaptation
-	bool ADAPTABLE;
+
+// check if we have received the first position
+	// also needed to start publishing the futur path
+	bool gotFirstPosition_ = false;
 
 private:
 	std::mutex mutex_;
 	//thread to publish futur path
-	pthread_t thread_;
-	bool startThread_;
+	pthread_t thread_futurePath_;
+	bool startThread_futurePath_;
 	//futur path variables
 	nav_msgs::Path msg_DesiredPath_;
 	int MAX_FRAME = 200;
 
-	// check if we have received the first position
-	// also needed to start publishing the futur path
-	bool gotFirstPosition_ = false;
+
+
+	// boolean for the adaptation
+	bool ADAPTABLE;
+	pthread_t thread_adaptation_;
+	bool startThread_adaptation_;
 
 	static MotionGenerator* me;
 	bool stop_ = false;
@@ -120,7 +125,12 @@ private:
 
 	void PublishDesiredVelocity();
 
-	void DSAdaptation();
+
+
+	//adaptation is set on another thread
+	static void* startAdaptationLoop(void* ptr);
+
+	void adaptationLoop();
 
 
 	/*Set of 3 functions to compute the forward integral of the desired velocity

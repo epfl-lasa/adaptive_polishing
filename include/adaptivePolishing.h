@@ -23,7 +23,6 @@ private:
 		double max;
 		double prev_grad;
 		double confidence;
-
 	};
 	// Motion detail
 	Eigen::Vector3d Cycle_Target_;
@@ -32,12 +31,12 @@ private:
 	geometry_msgs::Pose msg_cycle_target_;
 	ros::Publisher pub_cycle_target_;
 
-
 	double Cycle_radius_;
 	double Cycle_speed_;
 	double Cycle_speed_offset_;
 	double Convergence_Rate_;
 	double Convergence_Rate_scale_;
+
 
 	// Adaptation parameters
 	double Grad_desc_step_; //step for numerical derivation
@@ -46,6 +45,14 @@ private:
 	std::vector<double> confidence_;
 	double p_ = 0.95;
 	std::vector<double> prev_grad_;
+	std::vector<Eigen::Vector3d> previousPoses;
+	std::vector<Eigen::Vector3d> previousVels;
+	int adaptBufferCounter_ = 0;
+	bool adaptBufferReady_ = false;
+	int num_points_ = 10;
+	int real_num_points_ = num_points_;
+	int adaptTimeWindow_ = 1000;//1 second
+	ros::Timer adaptTimer_;
 
 
 
@@ -80,8 +87,10 @@ private:
 
 	void AdaptTrajectoryParameters(Eigen::Vector3d pose) override;
 
+	void adaptBufferFillingcallback(const ros::TimerEvent&);
+
+
 
 };
-
 
 #endif //__ADAPTIVE_POLISHING_V2_H__

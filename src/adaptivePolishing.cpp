@@ -14,6 +14,8 @@
 enum Coordinate { X=0 , Y=1 , Z=2 };
 enum Params {SEMI_AXIS_A ,SEMI_AXIS_B,ALPHA,OFFSET_X,OFFSET_Y,OFFSET_Z};
 
+
+
 AdaptivePolishing::AdaptivePolishing(ros::NodeHandle &n,
 		double frequency,
 		std::string input_rob_pose_topic_name,
@@ -32,9 +34,10 @@ AdaptivePolishing::AdaptivePolishing(ros::NodeHandle &n,
 	:MotionGenerator(n, frequency, input_rob_pose_topic_name,
 	input_rob_vel_topic_name, input_rob_acc_topic_name,
 	input_rob_force_topic_name, output_vel_topic_name,
-	output_filtered_vel_topic_name, true), Cycle_speed_(RotationSpeed),
-	Cycle_speed_offset_(0), Convergence_Rate_(ConvergenceRate),
-	Convergence_Rate_scale_(1),Cycle_radius_(1)
+	output_filtered_vel_topic_name, true),
+	Cycle_speed_(RotationSpeed),Cycle_speed_offset_(0),
+	Convergence_Rate_(ConvergenceRate),Convergence_Rate_scale_(1),
+	Cycle_radius_(1)
 {
 	parameters_.resize(NUM_PARAMS);
 	confidence_.resize(NUM_PARAMS);
@@ -42,16 +45,20 @@ AdaptivePolishing::AdaptivePolishing(ros::NodeHandle &n,
 
 
 	for(int i= 0; i<parameters_.size();i++){
-
 		parameters_[i].val = parameters[i];
 		parameters_[i].adapt = adaptable_parameters[i];
 		parameters_[i].min = min_parameters[i];
 		parameters_[i].max = max_parameters[i];
 		parameters_[i].prev_grad = 0;
 		parameters_[i].confidence = 1;
-
 	}
 
+	previousPoses.resize(num_points_);
+	previousVels.resize(num_points_);
+
+	double duration = (double)adaptTimeWindow_/num_points_/1000.0;
+	adaptTimer_ = nh_.createTimer(ros::Duration(duration), 
+			&AdaptivePolishing::adaptBufferFillingcallback,this);
 
 	ROS_INFO_STREAM("AP.CPP: Adaptive polishing node is created at: " <<
 			nh_.getNamespace() << " with freq: " << frequency << "Hz");
@@ -61,6 +68,7 @@ AdaptivePolishing::AdaptivePolishing(ros::NodeHandle &n,
 
 	dyn_rec_f_ = boost::bind(&AdaptivePolishing::DynCallback, this, _1, _2);
 	dyn_rec_srv_.setCallback(dyn_rec_f_);
+
 }
 
 
@@ -163,6 +171,23 @@ void AdaptivePolishing::DynCallback(
 	Grad_desc_epsilon_ = config.grad_descent_epsilon; 
 	Grad_desc_step_ = config.grad_descent_step;
 
+	if(num_points_ != config.num_points || 
+			adaptTimeWindow_ != config.adaptTimeWindow){
+		adaptBufferReady_ = false;
+
+		num_points_ = config.num_points; 
+		adaptTimeWindow_ = config.adaptTimeWindow;
+
+		real_num_points_ = MIN(round((double)adaptTimeWindow_/4.0),num_points_);
+
+		double duration = (double)adaptTimeWindow_/real_num_points_/1000.0;
+		adaptTimer_.setPeriod(ros::Duration(duration));
+
+		adaptBufferCounter_ = 0;
+		previousPoses.resize(real_num_points_);
+		previousVels.resize(real_num_points_);
+	}
+
 	// if (Cycle_radius_scale_ < 0) {
 	// 	ROS_ERROR("RECONFIGURE: The scaling factor for radius cannot be negative!");
 	// }
@@ -187,16 +212,15 @@ void AdaptivePolishing::DynCallback(
 
 void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 
-	//if outside of workspace adapt if force is applied to rorobot 
+	//if outside of workspace adapt if force is applied to robot 
 	if(real_pose_(Z) > WORKSPACE_UP_BOUND){
 
 		if(rob_sensed_force_.norm() < FORCE_THRESHOLD){
-			//return;
+			return;
 		}
 	// if inside workspace adapt if there is a power exchange
 	}else{
-
-		double power = rob_sensed_force_.dot(real_vel_);
+	double power = rob_sensed_force_.dot(real_vel_);
 		if(power < POWER_THRESHOLD){
 			return;
 		}
@@ -206,52 +230,64 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 		return;
 	}
 
-	//ROS_INFO("I'm adapting");
-	//ROS_INFO("Detected human interaction, updatig the trajectory parameters ...");
-	// get the error on the velocity
-	Eigen::Vector3d error_vel = desired_velocity_ - real_vel_;
+	if(!adaptBufferReady_)
+	{
+		return;
+	}
+
+	// get the error on the velocity for all the saved poses with current parameters
+	std::vector<Eigen::Vector3d> error_vel(real_num_points_) ;
+	for(int i;i<previousPoses.size();i++){
+		error_vel[i] = GetVelocityFromPose(previousPoses[i]) - previousVels[i];
+	}
 
 	//double cost_function_J = 1/2 * error_vel.squaredNorm();
 
-	double grad_J;
-	Eigen::Vector3d err1;
-	Eigen::Vector3d err2;
+	double grad_J(0);
+
+	std::vector<Eigen::Vector3d> err1(real_num_points_);
+	std::vector<Eigen::Vector3d> err2(real_num_points_);
+	double tmp(0);
+
 	
+
 	for(auto& param : parameters_){
 		if(param.adapt)
 		{
-			double save = param.val;
-
 			// normalize the parameter
-			double tmp = param.val;
+			tmp = param.val;
 			tmp = SCALE(tmp,param.min,param.max);
 
-			//compute backward derivative
+				//compute backward derivative
 			tmp -= Grad_desc_step_;
 			param.val = SCALE_BACK(tmp,param.min,param.max);
-			err1 = GetVelocityFromPose(pose);
+			for(int i;i<previousPoses.size();i++)
+				err1[i] = GetVelocityFromPose(previousPoses[i]);
 			tmp += Grad_desc_step_;
 
 			//compute forward derivative
 			tmp += Grad_desc_step_;
 			param.val = SCALE_BACK(tmp,param.min,param.max);
-			err2 = GetVelocityFromPose(pose);
+			for(int i;i<previousPoses.size();i++)
+				err2[i] = GetVelocityFromPose(previousPoses[i]);
 			tmp -= Grad_desc_step_;
 
 			//compute gradient
-			grad_J = error_vel.dot((err1-err2)/(2*Grad_desc_step_));
-			param.confidence = p_*param.confidence + 
-					(1-p_)*pow(grad_J - param.prev_grad,2);
+			for(int i;i<previousPoses.size();i++)
+				grad_J += error_vel[i].dot((err1[i]-err2[i])/(2*Grad_desc_step_));
+			// param.confidence = p_*param.confidence + 
+			// 		(1-p_)*pow(grad_J - param.prev_grad,2);
 					
-			param.prev_grad = grad_J;
+			// param.prev_grad = grad_J;
 
-			param.confidence = MIN(param.confidence,0.01);
-			//modify the concerned parameter
+			// param.confidence = MIN(param.confidence,0.01);
+			// //modify the concerned parameter
 
-			tmp += (Grad_desc_epsilon_*grad_J)/param.confidence;
+			// tmp += (Grad_desc_epsilon_*grad_J)/parameters_[j].confidence;
+			tmp += (Grad_desc_epsilon_*grad_J);
 			param.val = SCALE_BACK(tmp,param.min,param.max);
 
-			//set buondaries
+			//set boundaries
 			param.val = MIN(param.val,param.max);
 			param.val = MAX(param.val,param.min);
 		}
@@ -259,4 +295,17 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 }
 
 
+void AdaptivePolishing::adaptBufferFillingcallback(const ros::TimerEvent&)
+{
+	if(gotFirstPosition_){
+		previousPoses.at(adaptBufferCounter_) = real_pose_ - target_offset_;
+		previousVels.at(adaptBufferCounter_) = real_vel_ - target_offset_;
+
+		adaptBufferCounter_++;
+		if(adaptBufferCounter_ == real_num_points_){
+			adaptBufferCounter_ = 0;
+			adaptBufferReady_ = true;
+		}
+	}
+}
 

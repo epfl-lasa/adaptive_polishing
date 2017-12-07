@@ -34,7 +34,6 @@ MotionGenerator::MotionGenerator(ros::NodeHandle &n,
 	signal(SIGINT,MotionGenerator::stopNode);
 
 	//ROS Topic initialization
-
 	sub_real_pose_ = nh_.subscribe(input_rob_pose_topic_name, SUB_BUFFER_SIZE,
 			&MotionGenerator::UpdateRealPosition, this,
 			ros::TransportHints().reliable().tcpNoDelay());
@@ -107,11 +106,21 @@ bool MotionGenerator::Init() {
 
 
 	//thread for future path
-	startThread_ = true;
-	if(pthread_create(&thread_, NULL, &MotionGenerator::startPathPublishingLoop,
-			this))
+	startThread_futurePath_ = true;
+	if(pthread_create(&thread_futurePath_, NULL,
+			&MotionGenerator::startPathPublishingLoop,this))
 	{
 	 	throw std::runtime_error("Cannot create reception thread");  
+	}
+
+	//thread for adaptation
+	if(ADAPTABLE){
+		startThread_adaptation_ = true;
+		if(pthread_create(&thread_adaptation_, NULL,
+				&MotionGenerator::startAdaptationLoop,this))
+		{
+			throw std::runtime_error("Cannot create adaptation thread");  
+		}
 	}
 
 	return true;
@@ -125,8 +134,6 @@ void MotionGenerator::Run() {
 
 		PublishDesiredVelocity();
 
-		DSAdaptation();
-
 		ros::spinOnce();
 
 		loop_rate_.sleep();
@@ -138,10 +145,16 @@ void MotionGenerator::Run() {
 	ros::spinOnce();
 	loop_rate_.sleep();
 
-	startThread_ = false;
-	pthread_join(thread_,NULL);
+	startThread_futurePath_ = false;
+	pthread_join(thread_futurePath_,NULL);
+
+	if(ADAPTABLE){
+		startThread_adaptation_ = false;
+		pthread_join(thread_adaptation_,NULL);
+	}
 
 	ros::shutdown();
+
 }
 
 
@@ -282,16 +295,27 @@ void MotionGenerator::PublishDesiredVelocity() {
 }
 
 
-void MotionGenerator::DSAdaptation(){
+void* MotionGenerator::startAdaptationLoop(void* ptr)
+{
+	reinterpret_cast<MotionGenerator *>(ptr)->adaptationLoop(); 
+}
 
-	if(ADAPTABLE){
-		AdaptTrajectoryParameters(real_pose_ - target_offset_);
+
+void MotionGenerator::adaptationLoop()
+{
+	while(startThread_adaptation_)
+	{
+		if(gotFirstPosition_)
+		{
+			AdaptTrajectoryParameters(real_pose_ - target_offset_);
+		}
 	}
+	std::cerr << "END adaptation thread" << std::endl;
 }
 
 //====================END:Velocity command and adaptation=======================
 
-//====================Forward integration and publishing of estimated Path======
+//==============Forward integration and publishing of estimated Path============
 
 void MotionGenerator::PublishFuturePath() {
 
@@ -338,7 +362,7 @@ void* MotionGenerator::startPathPublishingLoop(void* ptr)
 
 void MotionGenerator::pathPublishingLoop()
 {
-	while(startThread_)
+	while(startThread_futurePath_)
 	{
 		if(gotFirstPosition_)
 		{
