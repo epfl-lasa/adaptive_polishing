@@ -75,6 +75,9 @@ protected:
 	// also needed to start publishing the futur path
 	bool gotFirstPosition_ = false;
 
+	// booean to know if node is active
+	bool paused_ = false;
+
 private:
 	std::mutex mutex_;
 	//thread to publish futur path
@@ -83,8 +86,6 @@ private:
 	//futur path variables
 	nav_msgs::Path msg_DesiredPath_;
 	int MAX_FRAME = 200;
-
-
 
 	// boolean for the adaptation
 	bool ADAPTABLE;
@@ -146,6 +147,10 @@ private:
 
 	// Function called when the node is killed through CTRL + C
 	static void stopNode(int sig);
+
+	void pauseNode();
+
+	void unpauseNode();
 
 protected:
 

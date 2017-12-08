@@ -98,6 +98,7 @@ find_package(catkin REQUIRED COMPONENTS
 
  generate_dynamic_reconfigure_options(
   cfg/polishing_params.cfg
+  cfg/attractor_params.cfg
 ) 
 
 ###################################
@@ -157,10 +158,18 @@ add_executable(adaptation_recorder_node
 add_executable(adaptive_polishing_node 
 	src/adaptive_polishing_node.cpp
   src/MotionGenerator.cpp
-  src/adaptivePolishing.cpp
   include/MotionGenerator.h
+  src/adaptivePolishing.cpp
   include/adaptivePolishing.h
 	)
+
+add_executable(attractor_node 
+  src/attractor_node.cpp
+  src/MotionGenerator.cpp
+  include/MotionGenerator.h
+  src/AttractorDS.cpp
+  include/AttractorDS.h
+  )
 
 
 # add_executable(active_motionGenerator_node 
@@ -184,6 +193,12 @@ add_dependencies(adaptive_polishing_node
     # ${PROJECT_NAME}_gencfg
 )
 
+add_dependencies(attractor_node  
+  ${${PROJECT_NAME}_EXPORTED_TARGETS} 
+  ${catkin_EXPORTED_TARGETS}
+    # ${PROJECT_NAME}_gencfg
+)
+
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
@@ -192,6 +207,7 @@ add_dependencies(adaptive_polishing_node
 
 target_link_libraries(adaptive_polishing_node ${catkin_LIBRARIES} )
 target_link_libraries(adaptation_recorder_node ${catkin_LIBRARIES} )
+target_link_libraries(attractor_node ${catkin_LIBRARIES} )
 
 #############
 ## Install ##

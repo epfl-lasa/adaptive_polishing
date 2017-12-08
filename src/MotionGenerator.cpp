@@ -130,9 +130,12 @@ void MotionGenerator::Run() {
 
 	while (!stop_) {
 
-		ComputeDesiredVelocity();
+		if(!paused_)
+		{
+			ComputeDesiredVelocity();
 
-		PublishDesiredVelocity();
+			PublishDesiredVelocity();
+		}
 
 		ros::spinOnce();
 
@@ -305,7 +308,7 @@ void MotionGenerator::adaptationLoop()
 {
 	while(startThread_adaptation_)
 	{
-		if(gotFirstPosition_)
+		if(gotFirstPosition_ && !paused_)
 		{
 			AdaptTrajectoryParameters(real_pose_ - target_offset_);
 		}
@@ -378,4 +381,13 @@ void MotionGenerator::stopNode(int sig)
 {
 	ROS_INFO("Catched the ctrl C");
 	me->stop_ = true;
+}
+
+
+void MotionGenerator::pauseNode(){
+	paused_ = true;
+}
+
+void MotionGenerator::unpauseNode(){
+	paused_ = false;
 }

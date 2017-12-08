@@ -1,4 +1,4 @@
-#include "adaptivePolishing.h"
+#include "AttractorDS.h"
 
 // #include "ros/ros.h"
 // #include <vector>
@@ -26,10 +26,9 @@ int main(int argc, char **argv)
   std::vector<double> parameters;
   std::vector<double> min_param;
   std::vector<double> max_param;
-  double RotationSpeed;
   double ConvergenceRate;
-
   std::vector<double> adaptable_parameters;
+  int adaptable;
 
 
   if (!nh.getParam("input_rob_pose_topic_name", input_rob_pose_topic_name))   {
@@ -82,17 +81,17 @@ int main(int argc, char **argv)
     // return -1;
   }
 
-  if (!nh.getParam("RotationSpeed", RotationSpeed))  {
-    ROS_ERROR("Couldn't retrieve the rotation speed.");
-    // return -1;
-  }
-
   if (!nh.getParam("ConvergenceRate", ConvergenceRate)) {
     ROS_ERROR("Couldn't retrieve the convergence speed. ");
     // return -1;
   }
 
-  AdaptivePolishing my_adaptive_polishing(
+  if (!nh.getParam("adaptable", adaptable)) {
+    ROS_ERROR("Couldn't retrieve the convergence speed. ");
+    // return -1;
+  }
+
+  AttractorDS my_adaptive_polishing(
     nh,
     frequency,
     input_rob_pose_topic_name,
@@ -105,8 +104,8 @@ int main(int argc, char **argv)
     min_param,
     max_param,
     adaptable_parameters,
-    RotationSpeed,
-    ConvergenceRate);
+    ConvergenceRate,
+    adaptable);
 
   my_adaptive_polishing.Run();
 
