@@ -28,12 +28,13 @@ AttractorDS::AttractorDS(ros::NodeHandle &n,
 		std::vector<double> max_parameters,
 		std::vector<double> adaptable_parameters,
 		double ConvergenceRate,
-		bool adaptable
+		bool adaptable,
+		int nodeNum
 )
 	:MotionGenerator(n, frequency, input_rob_pose_topic_name,
 	input_rob_vel_topic_name, input_rob_acc_topic_name,
 	input_rob_force_topic_name, output_vel_topic_name,
-	output_filtered_vel_topic_name, adaptable),
+	output_filtered_vel_topic_name, adaptable),nodeNum_(nodeNum),
 	Convergence_Rate_(ConvergenceRate),Convergence_Rate_scale_(1)
 {
 	parameters_.resize(NUM_PARAMS);

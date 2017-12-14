@@ -42,6 +42,7 @@ private:
 	dynamic_reconfigure::Server<adaptive_polishing::attractor_paramsConfig> dyn_rec_srv_;
 	dynamic_reconfigure::Server<adaptive_polishing::attractor_paramsConfig>::CallbackType dyn_rec_f_;
 
+	int nodeNum_;
 
 public:
 	AttractorDS(ros::NodeHandle &n,
@@ -57,7 +58,8 @@ public:
 			std::vector<double> max_parameters,
 			std::vector<double> adaptable_parameters,
 			double ConvergenceRate,
-			bool adaptable
+			bool adaptable,
+			int nodeNum = 0
 	);
 
 private:

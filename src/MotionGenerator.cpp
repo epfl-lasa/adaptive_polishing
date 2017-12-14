@@ -367,7 +367,7 @@ void MotionGenerator::pathPublishingLoop()
 {
 	while(startThread_futurePath_)
 	{
-		if(gotFirstPosition_)
+		if(gotFirstPosition_ && !paused_)
 		{
 			PublishFuturePath();
 		}
