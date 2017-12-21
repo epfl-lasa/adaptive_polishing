@@ -21,7 +21,9 @@ AttractorDS::AttractorDS(ros::NodeHandle &n,
 		std::string input_rob_vel_topic_name,
 		std::string input_rob_acc_topic_name,
 		std::string input_rob_force_topic_name,
+		std::string input_active_node_topic_name,
 		std::string output_vel_topic_name,
+		std::string output_target_topic_name,
 		std::string output_filtered_vel_topic_name,
 		std::vector<double> parameters,
 		std::vector<double> min_parameters,
@@ -50,7 +52,15 @@ AttractorDS::AttractorDS(ros::NodeHandle &n,
 			nh_.getNamespace() << " with freq: " << frequency << "Hz");
 
 	pub_attractor_target_ = nh_.advertise<geometry_msgs::Pose>(
-			"DS/attractor/attractor_target", 1000, 1);
+			output_target_topic_name, 1000, 1);
+
+	// pub_attractor_info_ = nh_.advertise<adaptive_polishing::attractor_msg>(
+	// 		pub_name, 1000, 1);
+
+	sub_active_node_ = nh_.subscribe(input_active_node_topic_name,1,
+			&AttractorDS::checkActiveNode, this,
+			ros::TransportHints().reliable().tcpNoDelay());
+
 
 	dyn_rec_f_ = boost::bind(&AttractorDS::DynCallback, this, _1, _2);
 	dyn_rec_srv_.setCallback(dyn_rec_f_);
@@ -116,7 +126,6 @@ void AttractorDS::DynCallback(
 	Velocity_limit_ = config.vel_trimming;
 	Grad_desc_epsilon_ = config.grad_descent_epsilon; 
 	Grad_desc_step_ = config.grad_descent_step;
-
 
 	if (Convergence_Rate_scale_ < 0) {
 		ROS_ERROR("RECONFIGURE: The scaling factor for convergence rate cannot be negative!");
@@ -188,6 +197,25 @@ void AttractorDS::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 			param.val = MAX(param.val,param.min);
 		}
 	}
+
+	msg_attractor_target_.position.x = parameters_[X].val;
+	msg_attractor_target_.position.y = parameters_[Y].val;
+	msg_attractor_target_.position.z = parameters_[Z].val;
+
+	msg_attractor_target_.orientation.x = 0;
+	msg_attractor_target_.orientation.y = 0;
+	msg_attractor_target_.orientation.z = 0;
+	msg_attractor_target_.orientation.w = 0;
+	pub_attractor_target_.publish(msg_attractor_target_);
 }
 
 
+
+void AttractorDS::checkActiveNode(const std_msgs::Int32::ConstPtr& msg)
+{
+	if(nodeNum_ == msg->data){
+		unpauseNode();
+	}else{
+		pauseNode();
+	}
+}

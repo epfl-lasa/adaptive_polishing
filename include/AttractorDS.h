@@ -1,10 +1,15 @@
 #ifndef __ATTRACTOR_DS_H__
 #define __ATTRACTOR_DS_H__
 
+#include <string.h>
+#include <sstream>
 
 #include "MotionGenerator.h"
 
 #include "geometry_msgs/Pose2D.h"
+#include "geometry_msgs/Pose.h"
+#include "std_msgs/Int32.h"
+#include "adaptive_polishing/attractor_msg.h"
 
 #include "MathLib.h"
 #include <vector>
@@ -23,10 +28,16 @@ private:
 		double max;
 	};
 
-
+	ros::Publisher pub_attractor_info_;
+	adaptive_polishing::attractor_msg msg_attractor_info_;
+	
 	//publisher and msg to publish the cycle target when it is adapting
 	geometry_msgs::Pose msg_attractor_target_;
 	ros::Publisher pub_attractor_target_;
+
+	//subscriber to listen to active node
+	ros::Subscriber sub_active_node_;
+	int nodeNum_;
 
 	// Motion detail
 	std::vector<Parameter> parameters_;
@@ -42,7 +53,7 @@ private:
 	dynamic_reconfigure::Server<adaptive_polishing::attractor_paramsConfig> dyn_rec_srv_;
 	dynamic_reconfigure::Server<adaptive_polishing::attractor_paramsConfig>::CallbackType dyn_rec_f_;
 
-	int nodeNum_;
+
 
 public:
 	AttractorDS(ros::NodeHandle &n,
@@ -51,7 +62,9 @@ public:
 			std::string input_rob_vel_topic_name,
 			std::string input_rob_acc_topic_name,
 			std::string input_rob_force_topic_name,
+			std::string input_active_node_topic_name,
 			std::string output_vel_topic_name,
+			std::string output_target_topic_name,
 			std::string output_filtered_vel_topic_name,
 			std::vector<double> parameters,
 			std::vector<double> min_parameters,
@@ -70,6 +83,8 @@ private:
 	virtual Eigen::Vector3d GetVelocityFromPose(Eigen::Vector3d pose) override;
 
 	void AdaptTrajectoryParameters(Eigen::Vector3d pose) override;
+
+	void checkActiveNode(const std_msgs::Int32::ConstPtr& msg);
 
 
 

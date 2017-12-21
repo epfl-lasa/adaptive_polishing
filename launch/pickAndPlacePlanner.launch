@@ -1,0 +1,79 @@
+<?xml version="1.0" ?>
+<launch>
+
+  <arg name="topic_real_velocity" default="/lwr/ee_vel"/>
+  <arg name="topic_real_pose" default="/lwr/ee_pose"/>
+  <arg name="topic_real_acc" default="/lwr/ee_acc"/>
+  <arg name="topic_force" default="/lwr/ee_ft"/>
+
+  <arg name="topic_task1_velocity" default="/Att1/desired_velocity"/>
+  <arg name="topic_task2_velocity" default="/Att2/desired_velocity"/>
+  <arg name="topic_task3_velocity" default="/Att3/desired_velocity"/>
+
+  <arg name="topic_task1_target" default="/Att1/target"/>
+  <arg name="topic_task2_target" default="/Att2/target"/>
+  <arg name="topic_task3_target" default="/Att3/target"/>
+
+  <arg name="topic_active_node" default="/pickAndPlace/active_node"/>
+
+  <arg name="topic_desired_velocity" default="/lwr/joint_controllers/passive_ds_command_vel"/>
+  <arg name="topic_desired_force" default="/task_adaptation/desired_force"/>
+
+
+  <group ns="Att1">
+    <param name="input_rob_pose_topic_name" value="$(arg topic_real_pose)"/>
+    <param name="input_rob_vel_topic_name" value="$(arg topic_real_velocity)"/>
+    <param name="input_rob_acc_topic_name" value="$(arg topic_real_acc)"/>
+    <param name="input_rob_force_topic_name" value="$(arg topic_force)"/>
+    <param name="input_active_node_topic_name" value="$(arg topic_active_node)"/>
+    <param name="output_vel_topic_name" value="$(arg topic_task1_velocity)"/>
+    <param name="output_target_topic_name" value="$(arg topic_task1_target)"/>
+    <param name="output_filtered_vel_topic_name" value="/filtered_output"/>
+    <rosparam command="load" file="$(find adaptive_polishing)/config/attractor1_init_param.yml"/>   
+    <node name="main_node" pkg="adaptive_polishing" type="attractor_node" output="screen"/>
+  </group>
+
+  <group ns="Att2">
+    <param name="input_rob_pose_topic_name" value="$(arg topic_real_pose)"/>
+    <param name="input_rob_vel_topic_name" value="$(arg topic_real_velocity)"/>
+    <param name="input_rob_acc_topic_name" value="$(arg topic_real_acc)"/>
+    <param name="input_rob_force_topic_name" value="$(arg topic_force)"/>
+    <param name="input_active_node_topic_name" value="$(arg topic_active_node)"/>
+    <param name="output_vel_topic_name" value="$(arg topic_task2_velocity)"/>
+    <param name="output_target_topic_name" value="$(arg topic_task2_target)"/>
+    <param name="output_filtered_vel_topic_name" value="/filtered_output"/>
+    <rosparam command="load" file="$(find adaptive_polishing)/config/attractor2_init_param.yml"/>   
+    <node name="main_node" pkg="adaptive_polishing" type="attractor_node" output="screen"/>
+  </group>
+
+  <group ns="Att3">
+    <param name="input_rob_pose_topic_name" value="$(arg topic_real_pose)"/>
+    <param name="input_rob_vel_topic_name" value="$(arg topic_real_velocity)"/>
+    <param name="input_rob_acc_topic_name" value="$(arg topic_real_acc)"/>
+    <param name="input_rob_force_topic_name" value="$(arg topic_force)"/>
+    <param name="input_active_node_topic_name" value="$(arg topic_active_node)"/>
+    <param name="output_vel_topic_name" value="$(arg topic_task3_velocity)"/>
+    <param name="output_target_topic_name" value="$(arg topic_task3_target)"/>
+    <param name="output_filtered_vel_topic_name" value="/filtered_output"/>
+    <rosparam command="load" file="$(find adaptive_polishing)/config/attractor3_init_param.yml"/>   
+    <node name="main_node" pkg="adaptive_polishing" type="attractor_node" output="screen"/>
+  </group>
+
+
+  <group ns="planner">
+    <param name="input_real_pos_topic_name"           value="$(arg topic_real_pose)"/>
+    <param name="input_att1_desired_vel_topic_name"   value="$(arg topic_task1_velocity)"/>
+    <param name="input_att2_desired_vel_topic_name"   value="$(arg topic_task2_velocity)"/>
+    <param name="input_att3_desired_vel_topic_name"   value="$(arg topic_task3_velocity)"/>
+    <param name="input_att1_target_topic_name"        value="$(arg topic_task1_target)"/>
+    <param name="input_att2_target_topic_name"        value="$(arg topic_task2_target)"/>
+    <param name="input_att3_target_topic_name"        value="$(arg topic_task3_target)"/>
+    <param name="output_desired_vel_topic_name"       value="$(arg topic_desired_velocity)"/>
+    <param name="output_active_node_topic_name"       value="$(arg topic_active_node)"/>
+    <rosparam command="load" file="$(find adaptive_polishing)/config/pickAndPlacePlanner_param.yml"/>
+    <node name="Planner" pkg="adaptive_polishing" type="pickAndPlacePlanner_node" output="screen"/>
+  </group>
+
+<!-- <node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" /> -->
+
+</launch>

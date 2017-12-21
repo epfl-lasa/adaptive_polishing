@@ -57,10 +57,10 @@ MotionGenerator::MotionGenerator(ros::NodeHandle &n,
 	pub_desired_twist_filtered_ = nh_.advertise<geometry_msgs::Twist>(
 			output_filtered_vel_topic_name, 1);
 
-	pub_target_ = nh_.advertise<geometry_msgs::PointStamped>("DS/target", 1);
-	pub_DesiredPath_ = nh_.advertise<nav_msgs::Path>("DS/DesiredPath", 1);
+	pub_target_ = nh_.advertise<geometry_msgs::PointStamped>("/DS/target", 1);
+	pub_DesiredPath_ = nh_.advertise<nav_msgs::Path>("/DS/DesiredPath", 1);
 	pub_external_action_ = nh_.advertise<geometry_msgs::WrenchStamped>(
-			"DS/human_force",1);
+			"/DS/human_force",1);
 
 	msg_DesiredPath_.poses.resize(MAX_FRAME);
 

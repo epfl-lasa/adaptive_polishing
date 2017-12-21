@@ -148,15 +148,16 @@ private:
 	// Function called when the node is killed through CTRL + C
 	static void stopNode(int sig);
 
-	void pauseNode();
-
-	void unpauseNode();
 
 protected:
 
 	virtual void AdaptTrajectoryParameters(Eigen::Vector3d pose){}
 
 	virtual Eigen::Vector3d GetVelocityFromPose(Eigen::Vector3d pose) = 0;
+
+	void pauseNode();
+
+	void unpauseNode();
 
 };
 
