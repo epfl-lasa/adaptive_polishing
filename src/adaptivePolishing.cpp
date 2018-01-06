@@ -280,18 +280,9 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 			tmp -= Grad_desc_step_;
 
 			//compute gradient
-<<<<<<< HEAD
 			for(int i=0;i<previousPoses.size();i++)
 				grad_J += error_vel[i].dot((err1[i]-err2[i])/(2*Grad_desc_step_));
-=======
-			for(int i=0;i<previousPoses.size()-1;i++){
-				dx = previousPoses[i+1](X)-previousPoses[i](X);
-				dy = previousPoses[i+1](Y)-previousPoses[i](Y);
-				grad1J = atan2(dy,dx)-atan2(err1[i](Y),err1[i](X));
-				grad2J = atan2(dy,dx)-atan2(err2[i](Y),err2[i](X));
-				grad_J += (grad2J - grad1J)/(2*Grad_desc_step_);
-			}
->>>>>>> new_adaptation_func
+
 			// param.confidence = p_*param.confidence + 
 			// 		(1-p_)*pow(grad_J - param.prev_grad,2);
 					
