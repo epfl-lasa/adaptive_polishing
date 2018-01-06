@@ -263,6 +263,7 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 	
 
 	for(auto& param : parameters_){
+		grad_J = 0;
 		if(param.adapt)
 		{
 			// normalize the parameter
@@ -272,20 +273,20 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 				//compute backward derivative
 			tmp -= Grad_desc_step_;
 			param.val = SCALE_BACK(tmp,param.min,param.max);
-			for(int i;i<previousPoses.size();i++)
+			for(int i=0;i<previousPoses.size();i++)
 				err1[i] = GetVelocityFromPose(previousPoses[i]);
 			tmp += Grad_desc_step_;
 
 			//compute forward derivative
 			tmp += Grad_desc_step_;
 			param.val = SCALE_BACK(tmp,param.min,param.max);
-			for(int i;i<previousPoses.size();i++)
+			for(int i=0;i<previousPoses.size();i++)
 				err2[i] = GetVelocityFromPose(previousPoses[i]);
 			tmp -= Grad_desc_step_;
 
 			//compute gradient
-			for(int i;i<previousPoses.size();i++)
-				grad_J += error_vel[i].dot((err1[i]-err2[i])/(2*Grad_desc_step_));
+			for(int i=0;i<previousPoses.size();i++)
+				grad_J += 
 			// param.confidence = p_*param.confidence + 
 			// 		(1-p_)*pow(grad_J - param.prev_grad,2);
 					
@@ -304,6 +305,8 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 		}
 	}
 }
+
+void getGrad()
 
 
 void AdaptivePolishing::adaptBufferFillingcallback(const ros::TimerEvent&)
