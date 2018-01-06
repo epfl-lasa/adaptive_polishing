@@ -71,7 +71,7 @@ protected:
 	double Velocity_limit_; //speed limit
 
 
-// check if we have received the first position
+	// check if we have received the first position
 	// also needed to start publishing the futur path
 	bool gotFirstPosition_ = false;
 

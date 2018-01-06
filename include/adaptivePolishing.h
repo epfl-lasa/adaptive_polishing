@@ -16,6 +16,9 @@ class AdaptivePolishing : public MotionGenerator {
 
 private:
 
+	ros::Subscriber sub_real_pose_;
+	ros::Subscriber sub_real_vel_;
+
 	struct Parameter{
 		double val;
 		bool adapt;
@@ -51,6 +54,10 @@ private:
 	int num_points_ = 10;
 	int real_num_points_ = num_points_;
 	int adaptTimeWindow_ = 1000;//1 second
+	Eigen::Vector3d average_speed_;
+	Eigen::Vector3d average_pose_;
+	int average_speed_counter_;
+	int average_pose_counter_;
 	ros::Timer adaptTimer_;
 
 
@@ -78,6 +85,10 @@ public:
 	);
 
 private:
+
+	void SaveRealPosition(const geometry_msgs::Pose::ConstPtr& msg);
+
+	void SaveRealVelocity(const geometry_msgs::Twist::ConstPtr& msg);
 
 	void DynCallback(adaptive_polishing::polishing_paramsConfig &config, 
 			uint32_t level);
