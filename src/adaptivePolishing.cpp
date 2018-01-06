@@ -260,7 +260,6 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 		grad_J = 0;
 		if(param.adapt)
 		{
-			grad_J(0);
 			// normalize the parameter
 			tmp = param.val;
 			tmp = SCALE(tmp,param.min,param.max);
