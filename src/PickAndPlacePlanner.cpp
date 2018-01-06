@@ -64,6 +64,14 @@ PickAndPlacePlanner::PickAndPlacePlanner(
 
 	pub_desired_vel_ = nh_.advertise<geometry_msgs::Twist>(
 			output_desired_vel, 1000, 1);
+
+	pub_pickAndPlace_param_ = nh_.advertise<adaptive_polishing::pickAndPlaceParam_msg>(
+			"/DS/pickAndPlace/pickAndPlace_param", 1000, 1);
+
+	double duration = 0.01;
+	publishTimer_ = nh_.createTimer(ros::Duration(duration), 
+			&PickAndPlacePlanner::PublishTargets,this);
+ 
 }
 
 void PickAndPlacePlanner::Run(){
@@ -158,4 +166,16 @@ void PickAndPlacePlanner::stopNode(int sig)
 {
 	ROS_INFO("Catched the ctrl C");
 	me->stop_ = true;
+}
+
+
+void PickAndPlacePlanner::PublishTargets(const ros::TimerEvent&){
+	msg_pickAndPlaceParam_.activeNode =activeNode_;
+	msg_pickAndPlaceParam_.target1_x =targets_[0](X);
+	msg_pickAndPlaceParam_.target1_y =targets_[0](Y);
+	msg_pickAndPlaceParam_.target2_x =targets_[1](X);
+	msg_pickAndPlaceParam_.target2_y =targets_[1](Y);
+	msg_pickAndPlaceParam_.target3_x =targets_[2](X);
+	msg_pickAndPlaceParam_.target3_y =targets_[2](Y);
+	pub_pickAndPlace_param_.publish(msg_pickAndPlaceParam_);
 }
