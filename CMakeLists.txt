@@ -55,7 +55,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
   FILES
   attractor_msg.msg
-
+  cycleParam_msg.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -139,6 +139,7 @@ include_directories(
   
 )
 include_directories(${EIGEN3_INCLUDE_DIR})
+include_directories(include msg)
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
@@ -213,6 +214,7 @@ add_dependencies(pickAndPlacePlanner_node
   ${catkin_EXPORTED_TARGETS}
     # ${PROJECT_NAME}_gencfg
 )
+
 
 
 ## Specify libraries to link a library or executable target against

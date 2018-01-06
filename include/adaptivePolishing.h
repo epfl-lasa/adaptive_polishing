@@ -5,6 +5,8 @@
 #include "MotionGenerator.h"
 
 #include "geometry_msgs/Pose2D.h"
+#include "std_msgs/Int32.h"
+#include <adaptive_polishing/cycleParam_msg.h>
 
 #include "MathLib.h"
 #include <vector>
@@ -31,6 +33,11 @@ private:
 	//publisher and msg to publish the cycle target when it is adapting
 	geometry_msgs::Pose msg_cycle_target_;
 	ros::Publisher pub_cycle_target_;
+	ros::Publisher pub_active_node_;
+	std_msgs::Int32 msg_active_node;
+
+	ros::Publisher pub_cycle_param_;
+	adaptive_polishing::cycleParam_msg msg_cycleParam_;
 
 	// Motion detail
 	std::vector<Parameter> parameters_;
@@ -94,6 +101,8 @@ private:
 			uint32_t level);
 
 	virtual Eigen::Vector3d GetVelocityFromPose(Eigen::Vector3d pose) override;
+
+	virtual void PublishOnTimer(const ros::TimerEvent&) override;
 
 	void AdaptTrajectoryParameters(Eigen::Vector3d pose) override;
 
