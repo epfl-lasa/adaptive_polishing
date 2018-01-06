@@ -248,7 +248,7 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 
 	// get the error on the velocity for all the saved poses with current parameters
 	std::vector<Eigen::Vector3d> error_vel(real_num_points_) ;
-	for(int i;i<previousPoses.size();i++){
+	for(int i=0;i<previousPoses.size();i++){
 		error_vel[i] = GetVelocityFromPose(previousPoses[i]) - previousVels[i];
 	}
 
@@ -285,8 +285,13 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 			tmp -= Grad_desc_step_;
 
 			//compute gradient
-			for(int i=0;i<previousPoses.size();i++)
-				grad_J += 
+			for(int i=0;i<previousPoses.size()-1;i++){
+				dx = previousPoses[i+1](X)-previousPoses[i](X)
+				dy = previousPoses[i+1](Y)-previousPoses[i](Y);
+				grad1J = atan2(dy,dx)-atan2(err1[i](Y),err1[i](X));
+				grad2J = atan2(dy,dx)-atan2(err2[i](Y),err2[i](X));
+				grad_J += (grad1J+grad2J)/(2*Grad_desc_step_);
+			}
 			// param.confidence = p_*param.confidence + 
 			// 		(1-p_)*pow(grad_J - param.prev_grad,2);
 					
