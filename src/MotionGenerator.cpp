@@ -68,6 +68,9 @@ MotionGenerator::MotionGenerator(ros::NodeHandle &n,
 		ros::spinOnce();
 		ROS_INFO("The Motion generator is ready.");
 	}
+	double duration = 0.01;
+	publishTimer_ = nh_.createTimer(ros::Duration(duration), 
+			&MotionGenerator::PublishOnTimer,this);
 
 
 	Init();

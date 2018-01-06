@@ -69,6 +69,9 @@ AdaptivePolishing::AdaptivePolishing(ros::NodeHandle &n,
 	pub_cycle_target_ = nh_.advertise<geometry_msgs::Pose>(
 			"DS/adaptivePolishing/cycle_target", 1000, 1);
 
+	pub_cycle_param_ = nh_.advertise<adaptive_polishing::cycleParam_msg>(
+			"DS/adaptivePolishing/cycle_param", 1000, 1);
+ 
 	sub_real_pose_ = nh_.subscribe(input_rob_pose_topic_name, SUB_BUFFER_SIZE,
 			&AdaptivePolishing::SaveRealPosition, this,
 			ros::TransportHints().reliable().tcpNoDelay());
@@ -85,15 +88,6 @@ AdaptivePolishing::AdaptivePolishing(ros::NodeHandle &n,
 
 Eigen::Vector3d AdaptivePolishing::GetVelocityFromPose(Eigen::Vector3d pose)
 {
-	// msg_cycle_target_.position.x = Cycle_Target_(X);
-	// msg_cycle_target_.position.y = Cycle_Target_(Y);
-	// msg_cycle_target_.position.z = Cycle_Target_(Z);
-	// msg_cycle_target_.orientation.x = 0;
-	// msg_cycle_target_.orientation.y = 0;
-	// msg_cycle_target_.orientation.z = 0;
-	// msg_cycle_target_.orientation.w = 0;
-	// pub_cycle_target_.publish(msg_cycle_target_);
-
 	Eigen::Vector3d Cycle_Target;
 	Cycle_Target << parameters_[OFFSET_X].val,
 			parameters_[OFFSET_Y].val,
@@ -260,9 +254,10 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 	std::vector<Eigen::Vector3d> err2(real_num_points_);
 	double tmp(0);
 
-	
+	double dx,dy,grad1J,grad2J;
 
 	for(auto& param : parameters_){
+		grad_J = 0;
 		if(param.adapt)
 		{
 			grad_J(0);
@@ -285,8 +280,18 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 			tmp -= Grad_desc_step_;
 
 			//compute gradient
+<<<<<<< HEAD
 			for(int i=0;i<previousPoses.size();i++)
 				grad_J += error_vel[i].dot((err1[i]-err2[i])/(2*Grad_desc_step_));
+=======
+			for(int i=0;i<previousPoses.size()-1;i++){
+				dx = previousPoses[i+1](X)-previousPoses[i](X);
+				dy = previousPoses[i+1](Y)-previousPoses[i](Y);
+				grad1J = atan2(dy,dx)-atan2(err1[i](Y),err1[i](X));
+				grad2J = atan2(dy,dx)-atan2(err2[i](Y),err2[i](X));
+				grad_J += (grad2J - grad1J)/(2*Grad_desc_step_);
+			}
+>>>>>>> new_adaptation_func
 			// param.confidence = p_*param.confidence + 
 			// 		(1-p_)*pow(grad_J - param.prev_grad,2);
 					
@@ -352,4 +357,25 @@ void AdaptivePolishing::SaveRealVelocity(
 	average_speed_(Z) = (average_speed_(Z)*average_speed_counter_ + msg->linear.z)/(average_speed_counter_+1);
 
 	average_speed_counter_++;
+}
+
+
+void AdaptivePolishing::PublishOnTimer(const ros::TimerEvent&){
+
+	msg_cycle_target_.position.x = parameters_[OFFSET_X].val;
+	msg_cycle_target_.position.y = parameters_[OFFSET_Y].val;
+	msg_cycle_target_.position.z = parameters_[OFFSET_Z].val;
+	msg_cycle_target_.orientation.x = 0;
+	msg_cycle_target_.orientation.y = 0;
+	msg_cycle_target_.orientation.z = 0;
+	msg_cycle_target_.orientation.w = 0;
+	pub_cycle_target_.publish(msg_cycle_target_);
+
+
+	msg_cycleParam_.cycle_target_x = parameters_[OFFSET_X].val;
+	msg_cycleParam_.cycle_target_y = parameters_[OFFSET_Y].val;
+	msg_cycleParam_.semi_axis_x = parameters_[SEMI_AXIS_A].val;
+	msg_cycleParam_.semi_axis_y = parameters_[SEMI_AXIS_B].val;
+	pub_cycle_param_.publish(msg_cycleParam_);
+
 }

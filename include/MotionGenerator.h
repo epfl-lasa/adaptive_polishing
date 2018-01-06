@@ -44,6 +44,7 @@ private:
 	// geometry_msgs::Pose msg_real_pose_;
 	geometry_msgs::TwistStamped msg_desired_velocity_;
 	geometry_msgs::TwistStamped msg_desired_velocity_filtered_;
+	ros::Timer publishTimer_;
 
 
 	// Class variables
@@ -152,6 +153,8 @@ private:
 protected:
 
 	virtual void AdaptTrajectoryParameters(Eigen::Vector3d pose){}
+
+	virtual void PublishOnTimer(const ros::TimerEvent&){}
 
 	virtual Eigen::Vector3d GetVelocityFromPose(Eigen::Vector3d pose) = 0;
 
