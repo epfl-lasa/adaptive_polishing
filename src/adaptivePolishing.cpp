@@ -5,6 +5,8 @@
 #define WORKSPACE_UP_BOUND 10
 #define NUM_PARAMS 6
 
+#define SUB_BUFFER_SIZE 1000
+
 //MACROS
 #define SCALE(VAL, MIN, MAX) ( ((VAL)-(MIN)) / ((MAX)-(MIN)) )
 #define SCALE_BACK(VAL, MIN, MAX) ( (VAL)*((MAX)-(MIN)) + (MIN) )
@@ -37,7 +39,8 @@ AdaptivePolishing::AdaptivePolishing(ros::NodeHandle &n,
 	output_filtered_vel_topic_name, true),
 	Cycle_speed_(RotationSpeed),Cycle_speed_offset_(0),
 	Convergence_Rate_(ConvergenceRate),Convergence_Rate_scale_(1),
-	Cycle_radius_(1)
+	Cycle_radius_(1),average_speed_counter_(0),average_pose_counter_(0),
+	average_pose_(Eigen::Vector3d::Zero()),average_speed_(Eigen::Vector3d::Zero())
 {
 	parameters_.resize(NUM_PARAMS);
 	confidence_.resize(NUM_PARAMS);
@@ -65,6 +68,14 @@ AdaptivePolishing::AdaptivePolishing(ros::NodeHandle &n,
 
 	pub_cycle_target_ = nh_.advertise<geometry_msgs::Pose>(
 			"DS/adaptivePolishing/cycle_target", 1000, 1);
+
+	sub_real_pose_ = nh_.subscribe(input_rob_pose_topic_name, SUB_BUFFER_SIZE,
+			&AdaptivePolishing::SaveRealPosition, this,
+			ros::TransportHints().reliable().tcpNoDelay());
+
+	sub_real_vel_ = nh_.subscribe(input_rob_vel_topic_name, SUB_BUFFER_SIZE,
+			&AdaptivePolishing::SaveRealVelocity, this,
+			ros::TransportHints().reliable().tcpNoDelay());
 
 	dyn_rec_f_ = boost::bind(&AdaptivePolishing::DynCallback, this, _1, _2);
 	dyn_rec_srv_.setCallback(dyn_rec_f_);
@@ -298,8 +309,15 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 void AdaptivePolishing::adaptBufferFillingcallback(const ros::TimerEvent&)
 {
 	if(gotFirstPosition_){
-		previousPoses.at(adaptBufferCounter_) = real_pose_ - target_offset_;
-		previousVels.at(adaptBufferCounter_) = real_vel_ - target_offset_;
+
+
+		previousPoses.at(adaptBufferCounter_) = average_pose_ - target_offset_;
+		previousVels.at(adaptBufferCounter_) = average_speed_ - target_offset_;
+		average_pose_counter_ = 0;
+		average_speed_counter_ = 0;
+
+		// previousPoses.at(adaptBufferCounter_) = real_pose_ - target_offset_;
+		// previousVels.at(adaptBufferCounter_) = real_vel_ - target_offset_;
 
 		adaptBufferCounter_++;
 		if(adaptBufferCounter_ == real_num_points_){
@@ -309,3 +327,28 @@ void AdaptivePolishing::adaptBufferFillingcallback(const ros::TimerEvent&)
 	}
 }
 
+
+void AdaptivePolishing::SaveRealPosition(
+		const geometry_msgs::Pose::ConstPtr& msg) 
+{
+	if(gotFirstPosition_)
+	{
+		
+		average_pose_(X) = (average_pose_(X)*average_pose_counter_ + msg->position.x)/(average_pose_counter_+1);
+		average_pose_(Y) = (average_pose_(Y)*average_pose_counter_ + msg->position.x)/(average_pose_counter_+1);
+		average_pose_(Z) = (average_pose_(Z)*average_pose_counter_ + msg->position.x)/(average_pose_counter_+1);
+
+		average_pose_counter_++;
+	}
+}
+
+
+void AdaptivePolishing::SaveRealVelocity(
+		const geometry_msgs::Twist::ConstPtr& msg)
+{
+	average_speed_(X) = (average_speed_(X)*average_speed_counter_ + msg->linear.x)/(average_speed_counter_+1);
+	average_speed_(Y) = (average_speed_(Y)*average_speed_counter_ + msg->linear.y)/(average_speed_counter_+1);
+	average_speed_(Z) = (average_speed_(Z)*average_speed_counter_ + msg->linear.z)/(average_speed_counter_+1);
+
+	average_speed_counter_++;
+}
