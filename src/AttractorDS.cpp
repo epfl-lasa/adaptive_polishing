@@ -161,7 +161,7 @@ void AttractorDS::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 		return;
 	}
 
-	if(real_vel_ < VEL_THRESHOLD){
+	if(real_vel_.norm() < VEL_THRESHOLD){
 		return;
 	}
 
