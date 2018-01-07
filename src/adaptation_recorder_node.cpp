@@ -244,11 +244,11 @@ public:
 
 	void GetCycleParam(const adaptive_polishing::cycleParam_msg::ConstPtr& msg)
 	{
-		file_CycleParam_    << ros::Time::now()	<< "\t"
+		file_CycleParam_    << ros::Time::now()		<< "\t"
 		                    << msg->cycle_target_x 	<< "\t"
 		                    << msg->cycle_target_y 	<< "\t"
 		                    << msg->semi_axis_x 	<< "\t"
-		                    << msg->semi_axis_y << "\n";
+		                    << msg->semi_axis_y 	<< "\n";
 	}
 
 
