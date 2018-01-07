@@ -138,18 +138,22 @@ void AttractorDS::DynCallback(
 
 void AttractorDS::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 
-	//if outside of workspace adapt if force is applied to robot 
-	if(real_pose_(Z) > WORKSPACE_UP_BOUND){
+	// //if outside of workspace adapt if force is applied to robot 
+	// if(real_pose_(Z) > WORKSPACE_UP_BOUND){
 
-		if(rob_sensed_force_.norm() < FORCE_THRESHOLD){
-			return;
-		}
-	// if inside workspace adapt if there is a power exchange
-	}else{
-	double power = rob_sensed_force_.dot(real_vel_);
-		if(power < POWER_THRESHOLD){
-			return;
-		}
+	// 	if(rob_sensed_force_.norm() < FORCE_THRESHOLD){
+	// 		return;
+	// 	}
+	// // if inside workspace adapt if there is a power exchange
+	// }else{
+	// double power = rob_sensed_force_.dot(real_vel_);
+	// 	if(power < POWER_THRESHOLD){
+	// 		return;
+	// 	}
+	// }
+
+	if(rob_sensed_force_.norm() < FORCE_THRESHOLD){
+		return;
 	}
 
 	if(Grad_desc_step_ == 0){
