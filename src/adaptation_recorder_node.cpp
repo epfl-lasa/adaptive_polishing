@@ -405,7 +405,7 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "record_adaptation");
 
 	ros::NodeHandle nh;
-	double frequency = 100.0;
+	double frequency = 20.0;
 	AdaptationRecorder adaptation_recorder(nh, frequency);
 
 	adaptation_recorder.Initialize();
