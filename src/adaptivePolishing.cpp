@@ -142,6 +142,12 @@ Eigen::Vector3d AdaptivePolishing::GetVelocityFromPose(Eigen::Vector3d pose)
 
 	output_velocity = rot * scale * output_velocity;
 
+	if (output_velocity.norm() > Velocity_limit_) {
+		// set the velocity to the max norm
+		output_velocity = output_velocity / output_velocity.norm();
+		output_velocity *= Velocity_limit_;
+	}
+
 	return output_velocity;
 }
 
@@ -256,8 +262,8 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 
 	double grad_J(0);
 
-	std::vector<Eigen::Vector3d> err1(real_num_points_);
-	std::vector<Eigen::Vector3d> err2(real_num_points_);
+	std::vector<Eigen::Vector3d> vel1(real_num_points_);
+	std::vector<Eigen::Vector3d> vel2(real_num_points_);
 	double tmp(0);
 
 	double dx,dy,grad1J,grad2J;
@@ -266,6 +272,7 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 		grad_J = 0;
 		if(param.adapt)
 		{
+
 			// normalize the parameter
 			tmp = param.val;
 			tmp = SCALE(tmp,param.min,param.max);
@@ -274,26 +281,23 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 			tmp -= Grad_desc_step_;
 			param.val = SCALE_BACK(tmp,param.min,param.max);
 			for(int i=0;i<previousPoses.size();i++)
-				err1[i] = GetVelocityFromPose(previousPoses[i]);
+				vel1[i] = GetVelocityFromPose(previousPoses[i]);
 			tmp += Grad_desc_step_;
 
 			//compute forward derivative
 			tmp += Grad_desc_step_;
 			param.val = SCALE_BACK(tmp,param.min,param.max);
 			for(int i=0;i<previousPoses.size();i++)
-				err2[i] = GetVelocityFromPose(previousPoses[i]);
+				vel2[i] = GetVelocityFromPose(previousPoses[i]);
 			tmp -= Grad_desc_step_;
 
 			//compute gradient
 			for(int i=0;i<previousPoses.size();i++)
-				grad_J += error_vel[i].dot((err1[i]-err2[i])/(2*Grad_desc_step_));
+				grad_J += error_vel[i].dot((vel1[i]-vel2[i])/(2*Grad_desc_step_));
 
-			// // uncomment the following lines in order to filter the gradient 
-			// param.confidence = p_*param.confidence + (1-p_)*pow(grad_J - param.prev_grad,2);
-			// param.prev_grad = grad_J;
-			// param.confidence = MIN(param.confidence,0.01);
-			// //modify the concerned parameter
-			// tmp += (Grad_desc_epsilon_*grad_J)/param.confidence;
+			grad_J /= previousPoses.size(); 
+			//modify the concerned parameter
+			// tmp += (Grad_desc_epsilon_*grad_J) * param.confidence;
 
 			tmp += (Grad_desc_epsilon_*grad_J);
 			param.val = SCALE_BACK(tmp,param.min,param.max);
@@ -301,8 +305,26 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 			//set boundaries
 			param.val = MIN(param.val,param.max);
 			param.val = MAX(param.val,param.min);
+
+			param.confidence = 1/ (p_*param.confidence + (1-p_)*pow(grad_J - param.prev_grad,2) );
+			param.prev_grad = grad_J;
+			ROS_INFO_STREAM_THROTTLE(1, "parameter = " << param.val << " gradJ " 
+									<< grad_J << " param.confidence= " << param.confidence
+									<< " delta_theta = " << (Grad_desc_epsilon_*grad_J));
 		}
 	}
+
+	double sum_conf = 0;
+	for(auto& param : parameters_)
+		sum_conf += param.confidence;
+
+	for(auto& param : parameters_)
+	{
+		param.confidence /= sum_conf;
+		// param.confidence = MIN(param.confidence,0.1);
+	}
+
+
 }
 
 
@@ -311,14 +333,14 @@ void AdaptivePolishing::adaptBufferFillingcallback(const ros::TimerEvent&)
 	if(gotFirstPosition_){
 
 		//uncomment in order to filter the save positions and speed
-		// previousPoses.at(adaptBufferCounter_) = average_pose_ - target_offset_;
-		// previousVels.at(adaptBufferCounter_) = average_speed_ - target_offset_;
-		// average_pose_counter_ = 0;
-		// average_speed_counter_ = 0;
+		previousPoses.at(adaptBufferCounter_) = average_pose_ - target_offset_;
+		previousVels.at(adaptBufferCounter_) = average_speed_ - target_offset_;
+		average_pose_counter_ = 0;
+		average_speed_counter_ = 0;
 
 		//comment if previous lines are not commented
-		previousPoses.at(adaptBufferCounter_) = real_pose_ - target_offset_;
-		previousVels.at(adaptBufferCounter_) = real_vel_ - target_offset_;
+		// previousPoses.at(adaptBufferCounter_) = real_pose_ - target_offset_;
+		// previousVels.at(adaptBufferCounter_) = real_vel_ - target_offset_;
 
 		adaptBufferCounter_++;
 		if(adaptBufferCounter_ == real_num_points_){

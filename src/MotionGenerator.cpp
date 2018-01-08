@@ -201,6 +201,12 @@ void MotionGenerator::UpdateRealVelocity(
 	real_vel_(Y) = msg->linear.y;
 	real_vel_(Z) = msg->linear.z;
 
+	if (real_vel_.norm() > Velocity_limit_) {
+		// set the velocity to the max norm
+		real_vel_ = real_vel_ / real_vel_.norm();
+		real_vel_ *= Velocity_limit_;
+	}
+
 }
 
 void MotionGenerator::UpdateRealAcceleration(
