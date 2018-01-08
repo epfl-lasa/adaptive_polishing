@@ -1,6 +1,9 @@
 <?xml version="1.0" ?>
 <launch>
 
+
+
+
   <group ns="ds1">
     <param name="input_rob_pose_topic_name" value="/lwr/ee_pose"/>
     <param name="input_rob_vel_topic_name" value="/lwr/ee_vel"/>
@@ -13,6 +16,8 @@
     <!-- <node name="TA_record" pkg="adaptive_polishing" type="adaptation_recorder_node" output="screen"/> -->
   </group>
 
- <!--node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" />-->
+  <node pkg="rostopic" type="rostopic" name="angle_setting" args="pub /lwr/joint_controllers/passive_ds_command_orient geometry_msgs/Quaternion '{x: 0.0, y: 1.0, z: 0.0, w: 0.0}' -r 100" />
+
+  <node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" />
 
 </launch>
