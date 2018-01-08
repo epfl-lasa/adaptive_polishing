@@ -218,6 +218,7 @@ void AdaptivePolishing::DynCallback(
 void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 
 	// //if outside of workspace adapt if force is applied to robot 
+
 	// if(real_pose_(Z) > WORKSPACE_UP_BOUND){
 
 	// 	if(rob_sensed_force_.norm() < FORCE_THRESHOLD){
@@ -230,7 +231,6 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 	// 		return;
 	// 	}
 	// }
-
 
 	if(rob_sensed_force_.norm() < FORCE_THRESHOLD){
 		return;

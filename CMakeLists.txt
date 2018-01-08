@@ -56,6 +56,7 @@ add_message_files(
   FILES
   attractor_msg.msg
   cycleParam_msg.msg
+  pickAndPlaceParam_msg.msg
 )
 
 ## Generate services in the 'srv' folder

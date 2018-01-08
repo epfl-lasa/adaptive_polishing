@@ -13,6 +13,7 @@
 #include "geometry_msgs/PointStamped.h"
 #include "nav_msgs/Path.h"
 #include "std_msgs/Int32.h"
+#include <adaptive_polishing/pickAndPlaceParam_msg.h>
 
 #include "MathLib.h"
 #include "eigen3/Eigen/Dense"
@@ -39,12 +40,18 @@ private:
 	ros::Subscriber sub_att3_desired_vel_;
 	ros::Subscriber sub_att3_target_;
 
+
 	// real position of the robot
 	ros::Subscriber sub_real_pos_;
 
 	//publisher for desired velocity and real message
 	ros::Publisher pub_desired_vel_;
 	geometry_msgs::Twist msg_desired_velocity_;
+
+	//publish all the targets to the recorder
+	ros::Publisher pub_pickAndPlace_param_;
+	adaptive_polishing::pickAndPlaceParam_msg msg_pickAndPlaceParam_;
+	ros::Timer publishTimer_;
 
 	// publisher for active node with associated msg
 	ros::Publisher pub_active_node_;
@@ -97,6 +104,8 @@ private:
 	void checkTargetReached();
 
 	void publishActiveNode();
+
+	void PublishTargets(const ros::TimerEvent&);
 
 	static void stopNode(int sig);
 
