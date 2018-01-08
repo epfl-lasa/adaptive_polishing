@@ -4,6 +4,7 @@
 #define FORCE_THRESHOLD 10.0
 #define WORKSPACE_UP_BOUND 10
 #define NUM_PARAMS 3
+#define VEL_THRESHOLD 0.02
 
 //MACROS
 #define SCALE(VAL, MIN, MAX) ( ((VAL)-(MIN)) / ((MAX)-(MIN)) )
@@ -157,6 +158,10 @@ void AttractorDS::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 	}
 
 	if(Grad_desc_step_ == 0){
+		return;
+	}
+
+	if(real_vel_.norm() < VEL_THRESHOLD){
 		return;
 	}
 

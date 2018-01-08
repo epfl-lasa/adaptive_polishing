@@ -218,7 +218,8 @@ void AdaptivePolishing::DynCallback(
 
 void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 
-	//if outside of workspace adapt if force is applied to robot 
+	// //if outside of workspace adapt if force is applied to robot 
+
 	// if(real_pose_(Z) > WORKSPACE_UP_BOUND){
 
 	// 	if(rob_sensed_force_.norm() < FORCE_THRESHOLD){
@@ -269,7 +270,7 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 			tmp = param.val;
 			tmp = SCALE(tmp,param.min,param.max);
 
-				//compute backward derivative
+			//compute backward derivative
 			tmp -= Grad_desc_step_;
 			param.val = SCALE_BACK(tmp,param.min,param.max);
 			for(int i=0;i<previousPoses.size();i++)
@@ -284,22 +285,16 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 			tmp -= Grad_desc_step_;
 
 			//compute gradient
-			for(int i=0;i<previousPoses.size()-1;i++){
-				dx = previousPoses[i+1](X)-previousPoses[i](X);
-				dy = previousPoses[i+1](Y)-previousPoses[i](Y);
-				grad1J = atan2(dy,dx)-atan2(err1[i](Y),err1[i](X));
-				grad2J = atan2(dy,dx)-atan2(err2[i](Y),err2[i](X));
-				grad_J += (grad2J - grad1J)/(2*Grad_desc_step_);
-			}
-			// param.confidence = p_*param.confidence + 
-			// 		(1-p_)*pow(grad_J - param.prev_grad,2);
-					
-			// param.prev_grad = grad_J;
+			for(int i=0;i<previousPoses.size();i++)
+				grad_J += error_vel[i].dot((err1[i]-err2[i])/(2*Grad_desc_step_));
 
+			// // uncomment the following lines in order to filter the gradient 
+			// param.confidence = p_*param.confidence + (1-p_)*pow(grad_J - param.prev_grad,2);
+			// param.prev_grad = grad_J;
 			// param.confidence = MIN(param.confidence,0.01);
 			// //modify the concerned parameter
+			// tmp += (Grad_desc_epsilon_*grad_J)/param.confidence;
 
-			// tmp += (Grad_desc_epsilon_*grad_J)/parameters_[j].confidence;
 			tmp += (Grad_desc_epsilon_*grad_J);
 			param.val = SCALE_BACK(tmp,param.min,param.max);
 
@@ -315,14 +310,15 @@ void AdaptivePolishing::adaptBufferFillingcallback(const ros::TimerEvent&)
 {
 	if(gotFirstPosition_){
 
+		//uncomment in order to filter the save positions and speed
+		// previousPoses.at(adaptBufferCounter_) = average_pose_ - target_offset_;
+		// previousVels.at(adaptBufferCounter_) = average_speed_ - target_offset_;
+		// average_pose_counter_ = 0;
+		// average_speed_counter_ = 0;
 
-		previousPoses.at(adaptBufferCounter_) = average_pose_ - target_offset_;
-		previousVels.at(adaptBufferCounter_) = average_speed_ - target_offset_;
-		average_pose_counter_ = 0;
-		average_speed_counter_ = 0;
-
-		// previousPoses.at(adaptBufferCounter_) = real_pose_ - target_offset_;
-		// previousVels.at(adaptBufferCounter_) = real_vel_ - target_offset_;
+		//comment if previous lines are not commented
+		previousPoses.at(adaptBufferCounter_) = real_pose_ - target_offset_;
+		previousVels.at(adaptBufferCounter_) = real_vel_ - target_offset_;
 
 		adaptBufferCounter_++;
 		if(adaptBufferCounter_ == real_num_points_){
