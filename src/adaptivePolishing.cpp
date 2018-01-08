@@ -1,3 +1,4 @@
+
 #include "adaptivePolishing.h"
 
 #define POWER_THRESHOLD 0.4
