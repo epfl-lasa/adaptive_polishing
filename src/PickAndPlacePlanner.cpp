@@ -15,13 +15,14 @@ PickAndPlacePlanner::PickAndPlacePlanner(
 		std::string input_att3_desired_vel,
 		std::string input_att3_target,
 		std::string input_real_pos,
+		std::string input_rob_force_topic_name,
 		std::string output_desired_vel,
 		std::string output_active_node,
 		int activeNode,
 		std::vector<Eigen::Vector3d> targets
 )
 	:nh_(n),loop_rate_(frequency),activeNode_(activeNode),targets_(targets),
-	activeNodeIndex_(activeNode-1),real_pose_(targets[activeNode-1])
+	activeNodeIndex_(activeNode-1),real_pose_(targets[activeNode-1]),prev_vel_(Eigen::Vector3d::Zero())
 {
 	// interruption set up to catch CTRL + C
 	me = this;
@@ -50,12 +51,17 @@ PickAndPlacePlanner::PickAndPlacePlanner(
 			&PickAndPlacePlanner::updateTarget2, this,
 			ros::TransportHints().reliable().tcpNoDelay());
 
+
 	sub_att3_target_ = nh_.subscribe(input_att3_target,1000,
 			&PickAndPlacePlanner::updateTarget3, this,
 			ros::TransportHints().reliable().tcpNoDelay());
 
 	sub_real_pos_ = nh_.subscribe(input_real_pos,1000,
 			&PickAndPlacePlanner::updateRealPos, this,
+			ros::TransportHints().reliable().tcpNoDelay());
+
+	sub_robot_force_ = nh_.subscribe(input_rob_force_topic_name, 1000,
+			&PickAndPlacePlanner::UpdateRobotSensedForce, this,
 			ros::TransportHints().reliable().tcpNoDelay());
 
 
@@ -86,6 +92,7 @@ void PickAndPlacePlanner::Run(){
 
 		loop_rate_.sleep();
 	}
+	ros::spinOnce();
 	// send a 0 velocity command to the robot and stop the node
 	msg_desired_velocity_.linear.x  = 0;
 	msg_desired_velocity_.linear.y  = 0;
@@ -94,7 +101,6 @@ void PickAndPlacePlanner::Run(){
 	msg_desired_velocity_.angular.x = 0;
 	msg_desired_velocity_.angular.y = 0;
 	msg_desired_velocity_.angular.z = 0;
-
 	pub_desired_vel_.publish(msg_desired_velocity_);
 
 	ros::spinOnce();
@@ -105,20 +111,55 @@ void PickAndPlacePlanner::Run(){
 
 void PickAndPlacePlanner::updateDesiredVelocity1(const geometry_msgs::Twist::ConstPtr& msg){
 	if (activeNode_ == 1){
-		pub_desired_vel_.publish(msg);
+		Eigen::Vector3d tmp;
+		tmp << msg->linear.x,msg->linear.y,msg->linear.z;
+		prev_vel_ = vel_filter_factor_*prev_vel_+(1-vel_filter_factor_)*tmp;
+
+		msg_desired_velocity_.linear.x  = prev_vel_(X);
+		msg_desired_velocity_.linear.y  = prev_vel_(Y);
+		msg_desired_velocity_.linear.z  = prev_vel_(Z);
+
+		msg_desired_velocity_.angular.x = msg->angular.x;
+		msg_desired_velocity_.angular.y = msg->angular.y;
+		msg_desired_velocity_.angular.z = msg->angular.z;
+
+		pub_desired_vel_.publish(msg_desired_velocity_);
 	}
 
 }
 
 void PickAndPlacePlanner::updateDesiredVelocity2(const geometry_msgs::Twist::ConstPtr& msg){
 	if (activeNode_ == 2){
-		pub_desired_vel_.publish(msg);
+
+		Eigen::Vector3d tmp;
+		tmp << msg->linear.x,msg->linear.y,msg->linear.z;
+		prev_vel_ = vel_filter_factor_*prev_vel_+(1-vel_filter_factor_)*tmp;
+		msg_desired_velocity_.linear.x  = prev_vel_(X);
+		msg_desired_velocity_.linear.y  = prev_vel_(Y);
+		msg_desired_velocity_.linear.z  = prev_vel_(Z);
+
+		msg_desired_velocity_.angular.x = msg->angular.x;
+		msg_desired_velocity_.angular.y = msg->angular.y;
+		msg_desired_velocity_.angular.z = msg->angular.z;
+
+		pub_desired_vel_.publish(msg_desired_velocity_);
 	}
 }
 
 void PickAndPlacePlanner::updateDesiredVelocity3(const geometry_msgs::Twist::ConstPtr& msg){
 	if (activeNode_ == 3){
-		pub_desired_vel_.publish(msg);
+		Eigen::Vector3d tmp;
+		tmp << msg->linear.x,msg->linear.y,msg->linear.z;
+		prev_vel_ = vel_filter_factor_*prev_vel_+(1-vel_filter_factor_)*tmp;
+		msg_desired_velocity_.linear.x  = prev_vel_(X);
+		msg_desired_velocity_.linear.y  = prev_vel_(Y);
+		msg_desired_velocity_.linear.z  = prev_vel_(Z);
+
+		msg_desired_velocity_.angular.x = msg->angular.x;
+		msg_desired_velocity_.angular.y = msg->angular.y;
+		msg_desired_velocity_.angular.z = msg->angular.z;
+
+		pub_desired_vel_.publish(msg_desired_velocity_);
 	}
 }
 
@@ -146,14 +187,25 @@ void PickAndPlacePlanner::updateRealPos(const geometry_msgs::Pose::ConstPtr& msg
 	real_pose_(Z) = msg->position.z;
 }
 
+void PickAndPlacePlanner::UpdateRobotSensedForce(
+		const geometry_msgs::WrenchStamped::ConstPtr& msg)
+{
+	rob_sensed_force_(X) = msg->wrench.force.x;
+	rob_sensed_force_(Y) = msg->wrench.force.y;
+	rob_sensed_force_(Z) = msg->wrench.force.z;
+}
+
 void PickAndPlacePlanner::checkTargetReached(){
 	// ROS_INFO_STREAM("real_pose_: " << real_pose_ << 
 	// 	" target: " << targets_[activeNodeIndex_] << " activeNode: " << activeNode_);
 	Eigen::Vector3d error = real_pose_ - targets_[activeNodeIndex_];
 	// ROS_INFO_STREAM("error is: " << error.norm());
-	if(error.norm() < 0.05){
-		activeNode_ = activeNode_ == 3 ? 1 : activeNode_ + 1;
+	ROS_INFO_STREAM_THROTTLE(1,"sensed force norm: " << rob_sensed_force_.norm());
+	if(error.norm() < 0.05 && rob_sensed_force_.norm()<7){
+		int tmp = activeNode_;
+		activeNode_ = (activeNode_ == 3 || activeNode_ == 1) ? 2 : (prev_activeNode_ + 2)%4;
 		activeNodeIndex_ = activeNode_ - 1;
+		prev_activeNode_ = tmp;
 	}
 }
 

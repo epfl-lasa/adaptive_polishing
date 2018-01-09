@@ -17,6 +17,7 @@ int main(int argc, char **argv)
   std::string input_real_pos;
   std::string output_desired_vel;
   std::string output_active_node;
+  std::string input_rob_force_topic_name;
   int activeNode = 1;
   std::vector<Eigen::Vector3d> targets;
   std::vector<double> target1;
@@ -51,6 +52,11 @@ int main(int argc, char **argv)
 
   if (!nh.getParam("input_att3_target_topic_name", input_att3_target))   {
     ROS_ERROR("Couldn't retrieve the topic name for the input. ");
+    // return -1;
+  }
+
+  if (!nh.getParam("input_rob_force_topic_name", input_rob_force_topic_name))   {
+    ROS_ERROR("Couldn't retrieve the topic name for the output. ");
     // return -1;
   }
 
@@ -105,6 +111,7 @@ int main(int argc, char **argv)
     input_att3_desired_vel,
     input_att3_target,
     input_real_pos,
+    input_rob_force_topic_name,
     output_desired_vel,
     output_active_node,
     activeNode,

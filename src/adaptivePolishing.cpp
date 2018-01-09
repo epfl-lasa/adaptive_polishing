@@ -266,7 +266,8 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 	std::vector<Eigen::Vector3d> vel2(real_num_points_);
 	double tmp(0);
 
-	double dx,dy,grad1J,grad2J;
+	double dx,dy,grad1J,grad2J,dot_prod;
+	Eigen::Vector3d prev_direction;
 
 	for(auto& param : parameters_){
 		grad_J = 0;
@@ -293,11 +294,29 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 
 			//compute gradient
 			for(int i=0;i<previousPoses.size()-1;i++){
-				dx = previousPoses[i+1](X)-previousPoses[i](X);
-				dy = previousPoses[i+1](Y)-previousPoses[i](Y);
-				grad1J = 1/2*pow(atan2(dy,dx)-atan2(vel1[i](Y),vel1[i](X)),2);
-				grad2J = 1/2*pow(atan2(dy,dx)-atan2(vel2[i](Y),vel2[i](X)),2);
+				prev_direction = previousPoses[i+1]-previousPoses[i];
+				dot_prod = vel1[i].dot(prev_direction);
+				if(dot_prod == 0)
+					continue;
+				grad1J = pow(acos(dot_prod/(vel1[i].norm()*prev_direction.norm())),2);
+
+				dot_prod = vel2[i].dot(prev_direction);
+				if(dot_prod == 0){
+					continue;
+					ROS_INFO_STREAM_THROTTLE(1,"waddup");
+				}
+				if(i==0){
+					ROS_INFO_STREAM_THROTTLE(1,"cos of diff " << prev_direction << " vel " << vel1[i] << " dot prod " << dot_prod);
+				}
+
+				grad2J = pow(acos(dot_prod/(vel2[i].norm()*prev_direction.norm())),2);
+
+				if(i==0){
+					ROS_INFO_STREAM_THROTTLE(1,"before cos " << (vel2[i].norm()*prev_direction.norm())/dot_prod 
+											<< " after cos " << acos((vel2[i].norm()*prev_direction.norm())/dot_prod));
+				}
 				grad_J += (grad2J - grad1J)/(2*Grad_desc_step_);
+				
 			}
 
 			grad_J /= previousPoses.size(); 
@@ -314,8 +333,9 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 			param.confidence = 1/ (p_*param.confidence + (1-p_)*pow(grad_J - param.prev_grad,2) );
 			param.prev_grad = grad_J;
 			ROS_INFO_STREAM_THROTTLE(1, "parameter = " << param.val << " gradJ " 
-									<< grad_J << " param.confidence= " << param.confidence
-									<< " delta_theta = " << (Grad_desc_epsilon_*grad_J));
+									<< grad_J << " grad1J " << grad1J << " param.confidence= " 
+									<< param.confidence << " delta_theta = " 
+									<< (Grad_desc_epsilon_*grad_J));
 		}
 	}
 

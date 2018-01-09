@@ -40,6 +40,9 @@ private:
 	ros::Subscriber sub_att3_desired_vel_;
 	ros::Subscriber sub_att3_target_;
 
+	ros::Subscriber sub_robot_force_;
+	Eigen::Vector3d rob_sensed_force_;
+
 
 	// real position of the robot
 	ros::Subscriber sub_real_pos_;
@@ -59,8 +62,12 @@ private:
 
 	std::vector<Eigen::Vector3d> targets_;
 	int activeNode_;
+	int prev_activeNode_;
 	int activeNodeIndex_;
 	Eigen::Vector3d real_pose_;
+
+	Eigen::Vector3d prev_vel_;
+	double vel_filter_factor_=0.95;
 
 	static PickAndPlacePlanner* me;
 	bool stop_ = false;
@@ -77,6 +84,7 @@ public:
 			std::string input_att3_desired_vel,
 			std::string input_att3_target,
 			std::string input_real_pos,
+			std::string input_rob_force_topic_name,
 			std::string output_desired_vel,
 			std::string output_active_node,
 			int activeNode,
@@ -100,6 +108,8 @@ private:
 	void updateTarget3(const geometry_msgs::Pose::ConstPtr& msg);
 
 	void updateRealPos(const geometry_msgs::Pose::ConstPtr& msg);
+
+	void UpdateRobotSensedForce(const geometry_msgs::WrenchStamped::ConstPtr& msg);
 
 	void checkTargetReached();
 

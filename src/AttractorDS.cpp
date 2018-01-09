@@ -161,10 +161,10 @@ void AttractorDS::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 		return;
 	}
 
-	if(real_vel_.norm() < VEL_THRESHOLD){
-		return;
-	}
-
+	// if(real_vel_.norm() < VEL_THRESHOLD){
+	// 	return;
+	// }
+	ROS_INFO_STREAM_THROTTLE(1,"I am node number " <<nodeNum_<<" and I am adapting");
 
 	// get the error on the velocity
 	Eigen::Vector3d error_vel = desired_velocity_ - real_vel_;
