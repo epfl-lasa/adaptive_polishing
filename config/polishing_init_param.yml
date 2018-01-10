@@ -2,6 +2,6 @@
 parameters: [0.1, 0.1, 0, -0.5, 0, 0.4]
 min: [0.08, 0.08, -90, -0.7, -0.3, 0.35]
 max: [0.15, 0.15, 90, -0.4, 0.3, 0.45] 
-adaptable_parameters: [0, 0, 0, 1, 1, 0]
+adaptable_parameters: [1, 1, 1, 1, 1, 0]
 RotationSpeed: 3.5 # this is in rad/s
 ConvergenceRate: 3.5
