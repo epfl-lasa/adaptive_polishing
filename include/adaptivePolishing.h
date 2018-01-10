@@ -51,6 +51,7 @@ private:
 	// Adaptation parameters
 	double Grad_desc_step_; //step for numerical derivation
 	double Grad_desc_epsilon_; // epsilon for state adaptation
+	int func_used_ = 1;
 	std::vector<double> confidence_;
 	double p_ = 0.95;
 	std::vector<double> prev_grad_;

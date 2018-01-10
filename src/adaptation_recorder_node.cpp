@@ -132,7 +132,7 @@ public:
 		string recPathFile_CycleParam = recPath_ + "/cycle_param.txt";
 		file_CycleParam_.open(recPathFile_CycleParam);
 		file_CycleParam_    << "Time" << "\t" << "target_x" << "\t" << "target_y" << "\t" << "axis_x"
-		                    << "\t" << "axis_y" << "\n";
+		                    << "\t" << "axis_y" << "\t" << "alpha"<< "\n";
 		sub_CycleParam_ = nh_.subscribe("/ds1/DS/adaptivePolishing/cycle_param" , BUFFER_SIZE, &AdaptationRecorder::GetCycleParam, this);
 
 		string recPathFile_PickAndPlaceParam = recPath_ + "/pickAndPlace_param.txt";
@@ -259,7 +259,8 @@ public:
 		                    << msg->cycle_target_x 	<< "\t"
 		                    << msg->cycle_target_y 	<< "\t"
 		                    << msg->semi_axis_x 	<< "\t"
-		                    << msg->semi_axis_y 	<< "\n";
+		                    << msg->semi_axis_y 	<< "\t"
+		                    << msg->alpha 	<< "\n";
 	}
 
 	void GetPickAndPlaceParam(const adaptive_polishing::pickAndPlaceParam_msg::ConstPtr& msg)

@@ -1,7 +1,7 @@
 #semi_axis_a_scale, semi_axis_b_scale, orientation, offset x,y,z boolean
 parameters: [0.15, 0.08, 90, -0.5, 0, 0.4]
-min: [0.08, 0.08, -90, -0.7, -0.3, 0.35]
-max: [0.15, 0.15, 90, -0.4, 0.3, 0.45] 
-adaptable_parameters: [1, 1, 0, 1, 1, 0]
+min: [0.06, 0.06, -90, -0.7, -0.3, 0.35]
+max: [0.25, 0.25, 90, -0.4, 0.3, 0.45] 
+adaptable_parameters: [1, 1, 1, 1, 1, 0]
 RotationSpeed: 3.5 # this is in rad/s
 ConvergenceRate: 3.5
