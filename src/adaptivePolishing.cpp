@@ -312,8 +312,8 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 				grad2J = pow(acos(dot_prod/(vel2[i].norm()*prev_direction.norm())),2);
 
 				if(i==0){
-					ROS_INFO_STREAM_THROTTLE(1,"before cos " << (vel2[i].norm()*prev_direction.norm())/dot_prod 
-											<< " after cos " << acos((vel2[i].norm()*prev_direction.norm())/dot_prod));
+					ROS_INFO_STREAM_THROTTLE(1,"before cos " << dot_prod/(vel2[i].norm()*prev_direction.norm())
+											<< " after cos " << acos(dot_prod/(vel2[i].norm()*prev_direction.norm())));
 				}
 				grad_J += (grad2J - grad1J)/(2*Grad_desc_step_);
 				
@@ -323,7 +323,7 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 			//modify the concerned parameter
 			// tmp += (Grad_desc_epsilon_*grad_J) * param.confidence;
 
-			tmp += (Grad_desc_epsilon_*grad_J);
+			tmp -= (Grad_desc_epsilon_*grad_J);
 			param.val = SCALE_BACK(tmp,param.min,param.max);
 
 			//set boundaries
@@ -383,8 +383,8 @@ void AdaptivePolishing::SaveRealPosition(
 	{
 		
 		average_pose_(X) = (average_pose_(X)*average_pose_counter_ + msg->position.x)/(average_pose_counter_+1);
-		average_pose_(Y) = (average_pose_(Y)*average_pose_counter_ + msg->position.x)/(average_pose_counter_+1);
-		average_pose_(Z) = (average_pose_(Z)*average_pose_counter_ + msg->position.x)/(average_pose_counter_+1);
+		average_pose_(Y) = (average_pose_(Y)*average_pose_counter_ + msg->position.y)/(average_pose_counter_+1);
+		average_pose_(Z) = (average_pose_(Z)*average_pose_counter_ + msg->position.z)/(average_pose_counter_+1);
 
 		average_pose_counter_++;
 	}
