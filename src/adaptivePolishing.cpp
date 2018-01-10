@@ -292,13 +292,13 @@ void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 
 			//compute gradient
 			for(int i=0;i<previousPoses.size();i++)
-				grad_J += error_vel[i].dot((vel1[i]-vel2[i])/(2*Grad_desc_step_));
+				grad_J += error_vel[i].dot((vel2[i]-vel1[i])/(2*Grad_desc_step_));
 
 			grad_J /= previousPoses.size(); 
 			//modify the concerned parameter
 			// tmp += (Grad_desc_epsilon_*grad_J) * param.confidence;
 
-			tmp += (Grad_desc_epsilon_*grad_J);
+			tmp -= (Grad_desc_epsilon_*grad_J);
 			param.val = SCALE_BACK(tmp,param.min,param.max);
 
 			//set boundaries
@@ -357,8 +357,8 @@ void AdaptivePolishing::SaveRealPosition(
 	{
 		
 		average_pose_(X) = (average_pose_(X)*average_pose_counter_ + msg->position.x)/(average_pose_counter_+1);
-		average_pose_(Y) = (average_pose_(Y)*average_pose_counter_ + msg->position.x)/(average_pose_counter_+1);
-		average_pose_(Z) = (average_pose_(Z)*average_pose_counter_ + msg->position.x)/(average_pose_counter_+1);
+		average_pose_(Y) = (average_pose_(Y)*average_pose_counter_ + msg->position.y)/(average_pose_counter_+1);
+		average_pose_(Z) = (average_pose_(Z)*average_pose_counter_ + msg->position.z)/(average_pose_counter_+1);
 
 		average_pose_counter_++;
 	}
