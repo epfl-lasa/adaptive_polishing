@@ -44,6 +44,7 @@ private:
 	// geometry_msgs::Pose msg_real_pose_;
 	geometry_msgs::TwistStamped msg_desired_velocity_;
 	geometry_msgs::TwistStamped msg_desired_velocity_filtered_;
+	ros::Timer publishTimer_;
 
 
 	// Class variables
@@ -70,22 +71,27 @@ protected:
 	Eigen::Vector3d desired_velocity_filtered_;
 	double Velocity_limit_; //speed limit
 
-	// variables for the adaptation
-	bool ADAPTABLE;
-	int FORCE_THRESHOLD = 10;
-
-private:
-	std::mutex mutex_;
-	//thread to publish futur path
-	pthread_t thread_;
-	bool startThread_;
-	//futur path variables
-	nav_msgs::Path msg_DesiredPath_;
-	int MAX_FRAME = 200;
 
 	// check if we have received the first position
 	// also needed to start publishing the futur path
 	bool gotFirstPosition_ = false;
+
+	// booean to know if node is active
+	bool paused_ = false;
+
+private:
+	std::mutex mutex_;
+	//thread to publish futur path
+	pthread_t thread_futurePath_;
+	bool startThread_futurePath_;
+	//futur path variables
+	nav_msgs::Path msg_DesiredPath_;
+	int MAX_FRAME = 200;
+
+	// boolean for the adaptation
+	bool ADAPTABLE;
+	pthread_t thread_adaptation_;
+	bool startThread_adaptation_;
 
 	static MotionGenerator* me;
 	bool stop_ = false;
@@ -121,11 +127,17 @@ private:
 
 	void PublishDesiredVelocity();
 
-	void DSAdaptation();
+
+
+	//adaptation is set on another thread
+	static void* startAdaptationLoop(void* ptr);
+
+	void adaptationLoop();
 
 
 	/*Set of 3 functions to compute the forward integral of the desired velocity
-	* (the estimated path).The computation is done on another thread to prevent the node from slowing down
+	* (the estimated path).The computation is done on another thread to prevent 
+	* the node from slowing down
 	*/
 	void PublishFuturePath();
 
@@ -137,11 +149,18 @@ private:
 	// Function called when the node is killed through CTRL + C
 	static void stopNode(int sig);
 
+
 protected:
 
 	virtual void AdaptTrajectoryParameters(Eigen::Vector3d pose){}
 
+	virtual void PublishOnTimer(const ros::TimerEvent&){}
+
 	virtual Eigen::Vector3d GetVelocityFromPose(Eigen::Vector3d pose) = 0;
+
+	void pauseNode();
+
+	void unpauseNode();
 
 };
 

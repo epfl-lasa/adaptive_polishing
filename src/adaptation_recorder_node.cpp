@@ -11,6 +11,8 @@
 #include "geometry_msgs/Accel.h"
 #include "geometry_msgs/Quaternion.h"
 #include "nav_msgs/Path.h"
+#include <adaptive_polishing/cycleParam_msg.h>
+#include <adaptive_polishing/pickAndPlaceParam_msg.h>
 
 #include "geometry_msgs/TwistStamped.h"
 #include "geometry_msgs/WrenchStamped.h"
@@ -54,8 +56,11 @@ private:
 	ofstream file_adaptation_params_;
 
 	//cycle targt for circular motion
-	ofstream file_CycleTarget_;
+	ofstream file_CycleParam_;
 
+	//parameters for pickAndPlace motion
+	ofstream file_PickAndPlaceParam_;
+  
 	//desired path
 	ofstream file_DesiredPath_;
 
@@ -79,7 +84,8 @@ private:
 	ros::Subscriber sub_tasks_beliefs_;
 	ros::Subscriber sub_adaptation_params_;
 
-	ros::Subscriber sub_CycleTarget_;
+	ros::Subscriber sub_CycleParam_;
+	ros::Subscriber sub_PickAndPlaceParam_;
 
 	ros::Subscriber sub_DesiredPath_;
 
@@ -123,18 +129,24 @@ public:
 				&AdaptationRecorder::GetPositionReal, this);
 
 
-		string recPathFile_CycleTarget = recPath_ + "/cycle_target.txt";
-		file_CycleTarget_.open(recPathFile_CycleTarget);
-		file_CycleTarget_  << "Time" << "\t" << "x" << "\t" << "y" << "\t" << "z"
-		                    << "\t" << "rx" << "\t" << "ry" << "\t" << "rz" << "\t" << "rw" << "\n";
-		sub_CycleTarget_ = nh_.subscribe("/ds1/DS/adaptivePolishing/cycle_target" , BUFFER_SIZE, &AdaptationRecorder::GetCycleTarget, this);
+		string recPathFile_CycleParam = recPath_ + "/cycle_param.txt";
+		file_CycleParam_.open(recPathFile_CycleParam);
+		file_CycleParam_    << "Time" << "\t" << "target_x" << "\t" << "target_y" << "\t" << "axis_x"
+		                    << "\t" << "axis_y" << "\t" << "alpha"<< "\n";
+		sub_CycleParam_ = nh_.subscribe("/ds1/DS/adaptivePolishing/cycle_param" , BUFFER_SIZE, &AdaptationRecorder::GetCycleParam, this);
+
+		string recPathFile_PickAndPlaceParam = recPath_ + "/pickAndPlace_param.txt";
+		file_PickAndPlaceParam_.open(recPathFile_PickAndPlaceParam);
+		file_PickAndPlaceParam_    << "Time" << "\t" << "acitve_node" << "\t" << "target1_x" << "\t" << "target1_y"
+		                    << "\t" << "target2_x" << "\t" << "target2_y" << "\t" << "target3_x" << "\t" << "target3_y" << "\n";
+		sub_PickAndPlaceParam_ = nh_.subscribe("/DS/pickAndPlace/pickAndPlace_param" , BUFFER_SIZE, &AdaptationRecorder::GetPickAndPlaceParam, this);
 
 
 		string recPathFile_DesiredPath = recPath_ + "/desired_path.txt";
 		file_DesiredPath_.open(recPathFile_DesiredPath);
 		file_DesiredPath_  << "Time" << "\t" << "x" << "\t" << "y" << "\t" << "z"
 		                    << "\t" << "rx" << "\t" << "ry" << "\t" << "rz" << "\t" << "rw" << "\n";
-		sub_DesiredPath_ = nh_.subscribe("/ds1/DS/DesiredPath" , BUFFER_SIZE, &AdaptationRecorder::GetDesiredPath, this);
+		sub_DesiredPath_ = nh_.subscribe("/DS/DesiredPath" , BUFFER_SIZE, &AdaptationRecorder::GetDesiredPath, this);
 
 
 		string recPathFile_velocityReal = recPath_ + "/velocity_real.txt";
@@ -154,7 +166,7 @@ public:
 		file_forceReal_.open(recPathFile_forceReal);
 		file_forceReal_ << "Time" << "\t" << "x" << "\t" << "y" << "\t" << "z"
 		                << "\t" << "rx" << "\t" << "ry" << "\t" << "rz" << "\n";
-		sub_force_real_ = nh_.subscribe("/ds1/DS/human_force" , BUFFER_SIZE, &AdaptationRecorder::GetForceReal, this);
+		sub_force_real_ = nh_.subscribe("/DS/human_force" , BUFFER_SIZE, &AdaptationRecorder::GetForceReal, this);
 
 
 		string recPathFile_velocityDesired = recPath_ + "/velocity_desired.txt";
@@ -241,16 +253,26 @@ public:
 		                    << msg->orientation.w << "\n";
 	}
 
-	void GetCycleTarget(const geometry_msgs::Pose::ConstPtr& msg)
+	void GetCycleParam(const adaptive_polishing::cycleParam_msg::ConstPtr& msg)
 	{
-		file_CycleTarget_  << ros::Time::now()	<< "\t"
-		                    << msg->position.x 	<< "\t"
-		                    << msg->position.y 	<< "\t"
-		                    << msg->position.z 	<< "\t"
-		                    << msg->orientation.x << "\t"
-		                    << msg->orientation.y << "\t"
-		                    << msg->orientation.z << "\t"
-		                    << msg->orientation.w << "\n";
+		file_CycleParam_    << ros::Time::now()		<< "\t"
+		                    << msg->cycle_target_x 	<< "\t"
+		                    << msg->cycle_target_y 	<< "\t"
+		                    << msg->semi_axis_x 	<< "\t"
+		                    << msg->semi_axis_y 	<< "\t"
+		                    << msg->alpha 	<< "\n";
+	}
+
+	void GetPickAndPlaceParam(const adaptive_polishing::pickAndPlaceParam_msg::ConstPtr& msg)
+	{
+		file_PickAndPlaceParam_    << ros::Time::now()	<< "\t"
+		                           << msg->activeNode 	<< "\t"
+		                           << msg->target1_x 	<< "\t"
+		                           << msg->target1_y 	<< "\t"
+		                           << msg->target2_x 	<< "\t"
+		                           << msg->target2_y 	<< "\t"
+		                           << msg->target3_x 	<< "\t"
+		                           << msg->target3_y 	<< "\n";
 	}
 
 
@@ -384,7 +406,9 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "record_adaptation");
 
 	ros::NodeHandle nh;
-	double frequency = 100.0;
+
+	double frequency = 20.0;
+
 	AdaptationRecorder adaptation_recorder(nh, frequency);
 
 	adaptation_recorder.Initialize();

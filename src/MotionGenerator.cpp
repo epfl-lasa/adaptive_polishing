@@ -34,7 +34,6 @@ MotionGenerator::MotionGenerator(ros::NodeHandle &n,
 	signal(SIGINT,MotionGenerator::stopNode);
 
 	//ROS Topic initialization
-
 	sub_real_pose_ = nh_.subscribe(input_rob_pose_topic_name, SUB_BUFFER_SIZE,
 			&MotionGenerator::UpdateRealPosition, this,
 			ros::TransportHints().reliable().tcpNoDelay());
@@ -58,10 +57,10 @@ MotionGenerator::MotionGenerator(ros::NodeHandle &n,
 	pub_desired_twist_filtered_ = nh_.advertise<geometry_msgs::Twist>(
 			output_filtered_vel_topic_name, 1);
 
-	pub_target_ = nh_.advertise<geometry_msgs::PointStamped>("DS/target", 1);
-	pub_DesiredPath_ = nh_.advertise<nav_msgs::Path>("DS/DesiredPath", 1);
+	pub_target_ = nh_.advertise<geometry_msgs::PointStamped>("/DS/target", 1);
+	pub_DesiredPath_ = nh_.advertise<nav_msgs::Path>("/DS/DesiredPath", 1);
 	pub_external_action_ = nh_.advertise<geometry_msgs::WrenchStamped>(
-			"DS/human_force",1);
+			"/DS/human_force",1);
 
 	msg_DesiredPath_.poses.resize(MAX_FRAME);
 
@@ -69,6 +68,9 @@ MotionGenerator::MotionGenerator(ros::NodeHandle &n,
 		ros::spinOnce();
 		ROS_INFO("The Motion generator is ready.");
 	}
+	double duration = 0.01;
+	publishTimer_ = nh_.createTimer(ros::Duration(duration), 
+			&MotionGenerator::PublishOnTimer,this);
 
 
 	Init();
@@ -107,11 +109,21 @@ bool MotionGenerator::Init() {
 
 
 	//thread for future path
-	startThread_ = true;
-	if(pthread_create(&thread_, NULL, &MotionGenerator::startPathPublishingLoop,
-			this))
+	startThread_futurePath_ = true;
+	if(pthread_create(&thread_futurePath_, NULL,
+			&MotionGenerator::startPathPublishingLoop,this))
 	{
 	 	throw std::runtime_error("Cannot create reception thread");  
+	}
+
+	//thread for adaptation
+	if(ADAPTABLE){
+		startThread_adaptation_ = true;
+		if(pthread_create(&thread_adaptation_, NULL,
+				&MotionGenerator::startAdaptationLoop,this))
+		{
+			throw std::runtime_error("Cannot create adaptation thread");  
+		}
 	}
 
 	return true;
@@ -121,11 +133,12 @@ void MotionGenerator::Run() {
 
 	while (!stop_) {
 
-		ComputeDesiredVelocity();
+		if(!paused_)
+		{
+			ComputeDesiredVelocity();
 
-		PublishDesiredVelocity();
-
-		DSAdaptation();
+			PublishDesiredVelocity();
+		}
 
 		ros::spinOnce();
 
@@ -138,10 +151,16 @@ void MotionGenerator::Run() {
 	ros::spinOnce();
 	loop_rate_.sleep();
 
-	startThread_ = false;
-	pthread_join(thread_,NULL);
+	startThread_futurePath_ = false;
+	pthread_join(thread_futurePath_,NULL);
+
+	if(ADAPTABLE){
+		startThread_adaptation_ = false;
+		pthread_join(thread_adaptation_,NULL);
+	}
 
 	ros::shutdown();
+
 }
 
 
@@ -181,6 +200,12 @@ void MotionGenerator::UpdateRealVelocity(
 	real_vel_(X) = msg->linear.x;
 	real_vel_(Y) = msg->linear.y;
 	real_vel_(Z) = msg->linear.z;
+
+	if (real_vel_.norm() > Velocity_limit_) {
+		// set the velocity to the max norm
+		real_vel_ = real_vel_ / real_vel_.norm();
+		real_vel_ *= Velocity_limit_;
+	}
 
 }
 
@@ -282,18 +307,27 @@ void MotionGenerator::PublishDesiredVelocity() {
 }
 
 
-void MotionGenerator::DSAdaptation(){
+void* MotionGenerator::startAdaptationLoop(void* ptr)
+{
+	reinterpret_cast<MotionGenerator *>(ptr)->adaptationLoop(); 
+}
 
-	Eigen::Vector3d pose = real_pose_ - target_offset_; 
 
-	if(rob_sensed_force_.segment(0,2).norm()>FORCE_THRESHOLD && ADAPTABLE){
-		AdaptTrajectoryParameters(pose);
+void MotionGenerator::adaptationLoop()
+{
+	while(startThread_adaptation_)
+	{
+		if(gotFirstPosition_ && !paused_)
+		{
+			AdaptTrajectoryParameters(real_pose_ - target_offset_);
+		}
 	}
+	std::cerr << "END adaptation thread" << std::endl;
 }
 
 //====================END:Velocity command and adaptation=======================
 
-//====================Forward integration and publishing of estimated Path======
+//==============Forward integration and publishing of estimated Path============
 
 void MotionGenerator::PublishFuturePath() {
 
@@ -334,15 +368,15 @@ void MotionGenerator::PublishFuturePath() {
 
 void* MotionGenerator::startPathPublishingLoop(void* ptr)
 {
-    reinterpret_cast<MotionGenerator *>(ptr)->pathPublishingLoop(); 
+	reinterpret_cast<MotionGenerator *>(ptr)->pathPublishingLoop(); 
 }
 
 
 void MotionGenerator::pathPublishingLoop()
 {
-	while(startThread_)
+	while(startThread_futurePath_)
 	{
-		if(gotFirstPosition_)
+		if(gotFirstPosition_ && !paused_)
 		{
 			PublishFuturePath();
 		}
@@ -356,4 +390,13 @@ void MotionGenerator::stopNode(int sig)
 {
 	ROS_INFO("Catched the ctrl C");
 	me->stop_ = true;
+}
+
+
+void MotionGenerator::pauseNode(){
+	paused_ = true;
+}
+
+void MotionGenerator::unpauseNode(){
+	paused_ = false;
 }

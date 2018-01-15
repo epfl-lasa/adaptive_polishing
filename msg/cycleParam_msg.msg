@@ -1,0 +1,5 @@
+float64 cycle_target_x
+float64 cycle_target_y
+float64 semi_axis_x
+float64 semi_axis_y
+float64 alpha

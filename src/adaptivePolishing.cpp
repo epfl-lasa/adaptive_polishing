@@ -1,7 +1,22 @@
+
 #include "adaptivePolishing.h"
 
+#define POWER_THRESHOLD 0.4
+#define FORCE_THRESHOLD 10.0
+#define WORKSPACE_UP_BOUND 10
+#define NUM_PARAMS 6
+
+#define SUB_BUFFER_SIZE 1000
+
+//MACROS
+#define SCALE(VAL, MIN, MAX) ( ((VAL)-(MIN)) / ((MAX)-(MIN)) )
+#define SCALE_BACK(VAL, MIN, MAX) ( (VAL)*((MAX)-(MIN)) + (MIN) )
+#define MIN(X, Y)  ((X) < (Y) ? (X) : (Y))
+#define MAX(X, Y)  ((X) > (Y) ? (X) : (Y))
 
 enum Coordinate { X=0 , Y=1 , Z=2 };
+enum Params {SEMI_AXIS_A ,SEMI_AXIS_B,ALPHA,OFFSET_X,OFFSET_Y,OFFSET_Z};
+
 
 
 AdaptivePolishing::AdaptivePolishing(ros::NodeHandle &n,
@@ -12,8 +27,10 @@ AdaptivePolishing::AdaptivePolishing(ros::NodeHandle &n,
 		std::string input_rob_force_topic_name,
 		std::string output_vel_topic_name,
 		std::string output_filtered_vel_topic_name,
-		std::vector<double> CenterRotation,
-		double radius,
+		std::vector<double> parameters,
+		std::vector<double> min_parameters,
+		std::vector<double> max_parameters,
+		std::vector<double> adaptable_parameters,
 		double RotationSpeed,
 		double ConvergenceRate
 )
@@ -21,10 +38,31 @@ AdaptivePolishing::AdaptivePolishing(ros::NodeHandle &n,
 	input_rob_vel_topic_name, input_rob_acc_topic_name,
 	input_rob_force_topic_name, output_vel_topic_name,
 	output_filtered_vel_topic_name, true),
-	Cycle_Target_(CenterRotation.data()), Cycle_radius_(radius),
-	Cycle_radius_scale_(1), Cycle_speed_(RotationSpeed), Cycle_speed_offset_(0),
-	Convergence_Rate_(ConvergenceRate), Convergence_Rate_scale_(1)
+	Cycle_speed_(RotationSpeed),Cycle_speed_offset_(0),
+	Convergence_Rate_(ConvergenceRate),Convergence_Rate_scale_(1),
+	Cycle_radius_(1),average_speed_counter_(0),average_pose_counter_(0),
+	average_pose_(Eigen::Vector3d::Zero()),average_speed_(Eigen::Vector3d::Zero())
 {
+	parameters_.resize(NUM_PARAMS);
+	confidence_.resize(NUM_PARAMS);
+	prev_grad_.resize(NUM_PARAMS);
+
+
+	for(int i= 0; i<parameters_.size();i++){
+		parameters_[i].val = parameters[i];
+		parameters_[i].adapt = adaptable_parameters[i];
+		parameters_[i].min = min_parameters[i];
+		parameters_[i].max = max_parameters[i];
+		parameters_[i].prev_grad = 0;
+		parameters_[i].confidence = 1;
+	}
+
+	previousPoses.resize(num_points_);
+	previousVels.resize(num_points_);
+
+	double duration = (double)adaptTimeWindow_/num_points_/1000.0;
+	adaptTimer_ = nh_.createTimer(ros::Duration(duration), 
+			&AdaptivePolishing::adaptBufferFillingcallback,this);
 
 	ROS_INFO_STREAM("AP.CPP: Adaptive polishing node is created at: " <<
 			nh_.getNamespace() << " with freq: " << frequency << "Hz");
@@ -32,31 +70,66 @@ AdaptivePolishing::AdaptivePolishing(ros::NodeHandle &n,
 	pub_cycle_target_ = nh_.advertise<geometry_msgs::Pose>(
 			"DS/adaptivePolishing/cycle_target", 1000, 1);
 
+	pub_cycle_param_ = nh_.advertise<adaptive_polishing::cycleParam_msg>(
+			"DS/adaptivePolishing/cycle_param", 1000, 1);
+ 
+	sub_real_pose_ = nh_.subscribe(input_rob_pose_topic_name, SUB_BUFFER_SIZE,
+			&AdaptivePolishing::SaveRealPosition, this,
+			ros::TransportHints().reliable().tcpNoDelay());
+
+	sub_real_vel_ = nh_.subscribe(input_rob_vel_topic_name, SUB_BUFFER_SIZE,
+			&AdaptivePolishing::SaveRealVelocity, this,
+			ros::TransportHints().reliable().tcpNoDelay());
+
 	dyn_rec_f_ = boost::bind(&AdaptivePolishing::DynCallback, this, _1, _2);
 	dyn_rec_srv_.setCallback(dyn_rec_f_);
+
 }
 
 
 Eigen::Vector3d AdaptivePolishing::GetVelocityFromPose(Eigen::Vector3d pose)
 {
-	msg_cycle_target_.position.x = Cycle_Target_(X);
-	msg_cycle_target_.position.y = Cycle_Target_(Y);
-	msg_cycle_target_.position.z = Cycle_Target_(Z);
-	msg_cycle_target_.orientation.x = 0;
-	msg_cycle_target_.orientation.y = 0;
-	msg_cycle_target_.orientation.z = 0;
-	msg_cycle_target_.orientation.w = 0;
+	Eigen::Vector3d Cycle_Target;
+	Cycle_Target << parameters_[OFFSET_X].val,
+			parameters_[OFFSET_Y].val,
+			parameters_[OFFSET_Z].val;
 
-	pub_cycle_target_.publish(msg_cycle_target_);
+	double alpha = parameters_[ALPHA].val;
+	alpha = alpha/180*M_PI;
+
+	Eigen::Matrix3d rot;
+	rot <<  cos(alpha), -sin(alpha), 0,
+			sin(alpha),  cos(alpha), 0,
+			0		  ,  0		   , 1;
+
+	Eigen::Matrix3d inv_rot;
+	inv_rot <<  cos(alpha), sin(alpha), 0,
+				-sin(alpha),  cos(alpha), 0,
+					0	  ,  0		   , 1;
+
+	double a = parameters_[SEMI_AXIS_A].val;
+	double b = parameters_[SEMI_AXIS_B].val;
+	
+	Eigen::Matrix3d scale;
+	scale << a, 0, 0,
+			 0, b, 0,
+			 0, 0, 1;
+
+	Eigen::Matrix3d inv_scale;
+	inv_scale << 1/a, 0  , 0,
+				 0  , 1/b, 0,
+				 0  , 0  , 1;
+
 
 	Eigen::Vector3d output_velocity;
 
-	Eigen::Vector3d error_pose = pose - Cycle_Target_;
+
+	Eigen::Vector3d error_pose = inv_scale * inv_rot * (pose - Cycle_Target);
 
 	double R = sqrt(error_pose(X) * error_pose(X) + error_pose(Y) * error_pose(Y));
 	double T = atan2(error_pose(Y), error_pose(X));
 
-	double Rdot = -Convergence_Rate_ * Convergence_Rate_scale_ * (R - Cycle_radius_ * Cycle_radius_scale_);
+	double Rdot = -Convergence_Rate_ * Convergence_Rate_scale_ * (R - Cycle_radius_);
 	double Tdot = Cycle_speed_ + Cycle_speed_offset_;
 
 	double x_vel = Rdot * cos(T) - R * Tdot * sin(T);
@@ -66,6 +139,14 @@ Eigen::Vector3d AdaptivePolishing::GetVelocityFromPose(Eigen::Vector3d pose)
 	output_velocity(X) = x_vel;
 	output_velocity(Y) = y_vel;
 	output_velocity(Z) = z_vel;
+
+	output_velocity = rot * scale * output_velocity;
+
+	if (output_velocity.norm() > Velocity_limit_) {
+		// set the velocity to the max norm
+		output_velocity = output_velocity / output_velocity.norm();
+		output_velocity *= Velocity_limit_;
+	}
 
 	return output_velocity;
 }
@@ -95,16 +176,33 @@ void AdaptivePolishing::DynCallback(
 	target_offset_(Y) = config.offset_y;
 	target_offset_(Z) = config.offset_z;
 
-	Cycle_radius_scale_ = config.radius_scale;
+	//Cycle_radius_scale_ = config.radius_scale;
 	Cycle_speed_offset_ = config.Speed_offset;
 	Convergence_Rate_scale_ = config.ConvergenceSpeed;
 	Velocity_limit_ = config.vel_trimming;
 	Grad_desc_epsilon_ = config.grad_descent_epsilon; 
 	Grad_desc_step_ = config.grad_descent_step;
 
-	if (Cycle_radius_scale_ < 0) {
-		ROS_ERROR("RECONFIGURE: The scaling factor for radius cannot be negative!");
+	if(num_points_ != config.num_points || 
+			adaptTimeWindow_ != config.adaptTimeWindow){
+		adaptBufferReady_ = false;
+
+		num_points_ = config.num_points; 
+		adaptTimeWindow_ = config.adaptTimeWindow;
+
+		real_num_points_ = MIN(round((double)adaptTimeWindow_/4.0),num_points_);
+
+		double duration = (double)adaptTimeWindow_/real_num_points_/1000.0;
+		adaptTimer_.setPeriod(ros::Duration(duration));
+
+		adaptBufferCounter_ = 0;
+		previousPoses.resize(real_num_points_);
+		previousVels.resize(real_num_points_);
 	}
+
+	// if (Cycle_radius_scale_ < 0) {
+	// 	ROS_ERROR("RECONFIGURE: The scaling factor for radius cannot be negative!");
+	// }
 
 	if (Convergence_Rate_scale_ < 0) {
 		ROS_ERROR("RECONFIGURE: The scaling factor for convergence rate cannot be negative!");
@@ -126,70 +224,208 @@ void AdaptivePolishing::DynCallback(
 
 void AdaptivePolishing::AdaptTrajectoryParameters(Eigen::Vector3d pose){
 
-	// ROS_INFO("I'm adapting");
-	//ROS_INFO("Detected human interaction, updatig the trajectory parameters ...");
+	// //if outside of workspace adapt if force is applied to robot 
+
+	// if(real_pose_(Z) > WORKSPACE_UP_BOUND){
+
+	// 	if(rob_sensed_force_.norm() < FORCE_THRESHOLD){
+	// 		return;
+	// 	}
+	// // if inside workspace adapt if there is a power exchange
+	// }else{
+	// double power = rob_sensed_force_.dot(real_vel_);
+	// 	if(power < POWER_THRESHOLD){
+	// 		return;
+	// 	}
+	// }
+
+	if(rob_sensed_force_.norm() < FORCE_THRESHOLD){
+		return;
+	}
+
 	if(Grad_desc_step_ == 0){
 		return;
 	}
 
-	// get the error on the velocity
-	Eigen::Vector3d error_vel = desired_velocity_ - real_vel_;
+	if(!adaptBufferReady_)
+	{
+		return;
+	}
 
-	double cost_function_J = 1/2 * error_vel.squaredNorm();
+	// get the error on the velocity for all the saved poses with current parameters
+	std::vector<Eigen::Vector3d> error_vel(real_num_points_) ;
+	for(int i=0;i<previousPoses.size();i++){
+		error_vel[i] = GetVelocityFromPose(previousPoses[i]) - previousVels[i];
+	}
 
-	Eigen::Vector2d grad_J = ComputeGradient(error_vel,pose);
+	//double cost_function_J = 1/2 * error_vel.squaredNorm();
 
-	Cycle_Target_(X) += Grad_desc_epsilon_*grad_J(X);
-	Cycle_Target_(Y) += Grad_desc_epsilon_*grad_J(Y);
+	double grad_J(0);
 
-	 // ROS_INFO_STREAM("gradJx: " << grad_J(X) << " gradJy: " << grad_J(Y) );
+	std::vector<Eigen::Vector3d> vel1(real_num_points_);
+	std::vector<Eigen::Vector3d> vel2(real_num_points_);
+	double tmp(0);
 
-	// msg_cycle_target_.position.x = Cycle_Target_(X);
-	// msg_cycle_target_.position.y = Cycle_Target_(Y);
-	// msg_cycle_target_.position.z = Cycle_Target_(Z);
-	// msg_cycle_target_.orientation.x = 0;
-	// msg_cycle_target_.orientation.y = 0;
-	// msg_cycle_target_.orientation.z = 0;
-	// msg_cycle_target_.orientation.w = 0;
+	double dx,dy,grad1J,grad2J,dot_prod;
+	Eigen::Vector3d prev_direction;
 
-	// pub_cycle_target_.publish(msg_cycle_target_);
+	for(auto& param : parameters_){
+		grad_J = 0;
+		if(param.adapt)
+		{
+			// normalize the parameter
+			tmp = param.val;
+			tmp = SCALE(tmp,param.min,param.max);
+
+			//compute backward derivative
+			tmp -= Grad_desc_step_;
+			param.val = SCALE_BACK(tmp,param.min,param.max);
+			for(int i=0;i<previousPoses.size();i++)
+				vel1[i] = GetVelocityFromPose(previousPoses[i]);
+			tmp += Grad_desc_step_;
+
+			//compute forward derivative
+			tmp += Grad_desc_step_;
+			param.val = SCALE_BACK(tmp,param.min,param.max);
+			for(int i=0;i<previousPoses.size();i++)
+				vel2[i] = GetVelocityFromPose(previousPoses[i]);
+			tmp -= Grad_desc_step_;
+
+
+			// alternative adaptation function
+			// //compute gradient
+			if(func_used_ ==1){
+				for(int i=0;i<previousPoses.size();i++)
+					grad_J += error_vel[i].dot((vel2[i]-vel1[i])/(2*Grad_desc_step_));
+			}else{
+				//compute gradient
+				for(int i=0;i<previousPoses.size()-1;i++){
+					prev_direction = previousPoses[i+1]-previousPoses[i];
+					dot_prod = vel1[i].dot(prev_direction);
+					if(dot_prod == 0)
+						continue;
+					grad1J = pow(acos(dot_prod/(vel1[i].norm()*prev_direction.norm())),2);
+
+					dot_prod = vel2[i].dot(prev_direction);
+					if(dot_prod == 0){
+						continue;
+						ROS_INFO_STREAM_THROTTLE(1,"waddup");
+					}
+					if(i==0){
+						ROS_INFO_STREAM_THROTTLE(1,"cos of diff " << prev_direction << " vel " << vel1[i] << " dot prod " << dot_prod);
+					}
+
+					grad2J = pow(acos(dot_prod/(vel2[i].norm()*prev_direction.norm())),2);
+
+					if(i==0){
+						ROS_INFO_STREAM_THROTTLE(1,"before cos " << dot_prod/(vel2[i].norm()*prev_direction.norm())
+												<< " after cos " << acos(dot_prod/(vel2[i].norm()*prev_direction.norm())));
+					}
+					grad_J += (grad2J - grad1J)/(2*Grad_desc_step_);
+				}
+			}
+
+
+			grad_J /= previousPoses.size(); 
+			//modify the concerned parameter with the prefered method
+			// tmp -= (Grad_desc_epsilon_*grad_J) * param.confidence;
+			tmp -= (Grad_desc_epsilon_*grad_J);
+
+			param.val = SCALE_BACK(tmp,param.min,param.max);
+
+			//set boundaries
+			param.val = MIN(param.val,param.max);
+			param.val = MAX(param.val,param.min);
+
+			param.confidence = 1/ (p_*param.confidence + (1-p_)*pow(grad_J - param.prev_grad,2) );
+			param.prev_grad = grad_J;
+			ROS_INFO_STREAM_THROTTLE(1, "parameter = " << param.val << " gradJ " 
+									<< grad_J << " grad1J " << grad1J << " param.confidence= " 
+									<< param.confidence << " delta_theta = " 
+									<< (Grad_desc_epsilon_*grad_J));
+		}
+	}
+
+	double sum_conf = 0;
+	for(auto& param : parameters_)
+		sum_conf += param.confidence;
+
+	for(auto& param : parameters_)
+	{
+		param.confidence /= sum_conf;
+		param.confidence = MIN(param.confidence,0.1);
+	}
+
 
 }
 
-Eigen::Vector2d AdaptivePolishing::ComputeGradient(Eigen::Vector3d error_vel,Eigen::Vector3d pose){
 
+void AdaptivePolishing::adaptBufferFillingcallback(const ros::TimerEvent&)
+{
+	if(gotFirstPosition_){
 
-	//initialise the gradient vector
-	Eigen::Vector2d grad;
+		//uncomment in order to filter the save positions and speed
+		previousPoses.at(adaptBufferCounter_) = average_pose_ - target_offset_;
+		previousVels.at(adaptBufferCounter_) = average_speed_ - target_offset_;
+		average_pose_counter_ = 0;
+		average_speed_counter_ = 0;
 
-	Eigen::Vector3d err1;
-	Eigen::Vector3d err2;
+		//comment if previous lines are not commented
+		// previousPoses.at(adaptBufferCounter_) = real_pose_ - target_offset_;
+		// previousVels.at(adaptBufferCounter_) = real_vel_ - target_offset_;
 
-	Cycle_Target_(X) -= Grad_desc_step_;
-	err1 = GetVelocityFromPose(pose);
-	Cycle_Target_(X) += Grad_desc_step_;
-
-	Cycle_Target_(X) += Grad_desc_step_;
-	err2 = GetVelocityFromPose(pose);
-	Cycle_Target_(X) -= Grad_desc_step_;
-
-	grad(X) = error_vel.dot((err1-err2)/(2*Grad_desc_step_));
-
-	Cycle_Target_(Y) -= Grad_desc_step_;
-	err1 = GetVelocityFromPose(pose);
-	Cycle_Target_(Y) += Grad_desc_step_;
-
-	Cycle_Target_(Y) += Grad_desc_step_;
-	err2 = GetVelocityFromPose(pose);
-	Cycle_Target_(Y) -= Grad_desc_step_;
-
-	grad(Y) = error_vel.dot((err1-err2)/(2*Grad_desc_step_));
-
-	// ROS_INFO_STREAM("gradJx: " << grad(X) << " gradJy: " << grad(Y) );
-
-	return grad;
+		adaptBufferCounter_++;
+		if(adaptBufferCounter_ == real_num_points_){
+			adaptBufferCounter_ = 0;
+			adaptBufferReady_ = true;
+		}
+	}
 }
 
 
+void AdaptivePolishing::SaveRealPosition(
+		const geometry_msgs::Pose::ConstPtr& msg) 
+{
+	if(gotFirstPosition_)
+	{
+		
+		average_pose_(X) = (average_pose_(X)*average_pose_counter_ + msg->position.x)/(average_pose_counter_+1);
+		average_pose_(Y) = (average_pose_(Y)*average_pose_counter_ + msg->position.y)/(average_pose_counter_+1);
+		average_pose_(Z) = (average_pose_(Z)*average_pose_counter_ + msg->position.z)/(average_pose_counter_+1);
+
+		average_pose_counter_++;
+	}
+}
 
 
+void AdaptivePolishing::SaveRealVelocity(
+		const geometry_msgs::Twist::ConstPtr& msg)
+{
+	average_speed_(X) = (average_speed_(X)*average_speed_counter_ + msg->linear.x)/(average_speed_counter_+1);
+	average_speed_(Y) = (average_speed_(Y)*average_speed_counter_ + msg->linear.y)/(average_speed_counter_+1);
+	average_speed_(Z) = (average_speed_(Z)*average_speed_counter_ + msg->linear.z)/(average_speed_counter_+1);
+
+	average_speed_counter_++;
+}
+
+
+void AdaptivePolishing::PublishOnTimer(const ros::TimerEvent&){
+
+	msg_cycle_target_.position.x = parameters_[OFFSET_X].val;
+	msg_cycle_target_.position.y = parameters_[OFFSET_Y].val;
+	msg_cycle_target_.position.z = parameters_[OFFSET_Z].val;
+	msg_cycle_target_.orientation.x = 0;
+	msg_cycle_target_.orientation.y = 0;
+	msg_cycle_target_.orientation.z = 0;
+	msg_cycle_target_.orientation.w = 0;
+	pub_cycle_target_.publish(msg_cycle_target_);
+
+
+	msg_cycleParam_.cycle_target_x = parameters_[OFFSET_X].val;
+	msg_cycleParam_.cycle_target_y = parameters_[OFFSET_Y].val;
+	msg_cycleParam_.semi_axis_x = parameters_[SEMI_AXIS_A].val;
+	msg_cycleParam_.semi_axis_y = parameters_[SEMI_AXIS_B].val;
+	msg_cycleParam_.alpha = parameters_[ALPHA].val;
+	pub_cycle_param_.publish(msg_cycleParam_);
+
+}

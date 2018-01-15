@@ -14,6 +14,8 @@ find_package(catkin REQUIRED COMPONENTS
   mathlib
   sgaussians
   dynamic_reconfigure
+  message_generation
+  geometry_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -49,12 +51,13 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * uncomment the generate_messages entry below
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
-## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+# Generate messages in the 'msg' folder
+add_message_files(
+  FILES
+  attractor_msg.msg
+  cycleParam_msg.msg
+  pickAndPlaceParam_msg.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -71,10 +74,11 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  geometry_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -98,6 +102,7 @@ find_package(catkin REQUIRED COMPONENTS
 
  generate_dynamic_reconfigure_options(
   cfg/polishing_params.cfg
+  cfg/attractor_params.cfg
 ) 
 
 ###################################
@@ -112,7 +117,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES adaptive_polishing
-#  CATKIN_DEPENDS roscpp rospy std_msgs
+ CATKIN_DEPENDS message_runtime
 #  DEPENDS system_lib
 )
 
@@ -135,6 +140,7 @@ include_directories(
   
 )
 include_directories(${EIGEN3_INCLUDE_DIR})
+include_directories(include msg)
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
@@ -156,13 +162,25 @@ add_executable(adaptation_recorder_node
 
 add_executable(adaptive_polishing_node 
 	src/adaptive_polishing_node.cpp
-	# src/adaptive_polishing.cpp
   src/MotionGenerator.cpp
-  src/adaptivePolishing.cpp
-	# include/adaptive_polishing.h
   include/MotionGenerator.h
+  src/adaptivePolishing.cpp
   include/adaptivePolishing.h
 	)
+
+add_executable(attractor_node 
+  src/attractor_node.cpp
+  src/MotionGenerator.cpp
+  include/MotionGenerator.h
+  src/AttractorDS.cpp
+  include/AttractorDS.h
+  )
+
+add_executable(pickAndPlacePlanner_node 
+  src/pickAndPlacePlanner_node.cpp
+  src/PickAndPlacePlanner.cpp
+  include/PickAndPlacePlanner.h
+  )
 
 
 # add_executable(active_motionGenerator_node 
@@ -186,6 +204,19 @@ add_dependencies(adaptive_polishing_node
     # ${PROJECT_NAME}_gencfg
 )
 
+add_dependencies(attractor_node  
+  ${${PROJECT_NAME}_EXPORTED_TARGETS} 
+  ${catkin_EXPORTED_TARGETS}
+    # ${PROJECT_NAME}_gencfg
+)
+
+add_dependencies(pickAndPlacePlanner_node  
+  ${${PROJECT_NAME}_EXPORTED_TARGETS} 
+  ${catkin_EXPORTED_TARGETS}
+    # ${PROJECT_NAME}_gencfg
+)
+
+
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
@@ -194,6 +225,8 @@ add_dependencies(adaptive_polishing_node
 
 target_link_libraries(adaptive_polishing_node ${catkin_LIBRARIES} )
 target_link_libraries(adaptation_recorder_node ${catkin_LIBRARIES} )
+target_link_libraries(attractor_node ${catkin_LIBRARIES} )
+target_link_libraries(pickAndPlacePlanner_node ${catkin_LIBRARIES} )
 
 #############
 ## Install ##
