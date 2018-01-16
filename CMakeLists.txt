@@ -16,6 +16,8 @@ find_package(catkin REQUIRED COMPONENTS
   dynamic_reconfigure
   message_generation
   geometry_msgs
+  grasp_interface
+  robotiq_s_model_control
 )
 
 ## System dependencies are found with CMake's conventions
@@ -213,8 +215,10 @@ add_dependencies(attractor_node
 add_dependencies(pickAndPlacePlanner_node  
   ${${PROJECT_NAME}_EXPORTED_TARGETS} 
   ${catkin_EXPORTED_TARGETS}
+  ${PROJECT_NAME}_generate_messages_cpp
     # ${PROJECT_NAME}_gencfg
 )
+
 
 
 
@@ -226,7 +230,7 @@ add_dependencies(pickAndPlacePlanner_node
 target_link_libraries(adaptive_polishing_node ${catkin_LIBRARIES} )
 target_link_libraries(adaptation_recorder_node ${catkin_LIBRARIES} )
 target_link_libraries(attractor_node ${catkin_LIBRARIES} )
-target_link_libraries(pickAndPlacePlanner_node ${catkin_LIBRARIES} )
+target_link_libraries(pickAndPlacePlanner_node ${catkin_LIBRARIES})
 
 #############
 ## Install ##

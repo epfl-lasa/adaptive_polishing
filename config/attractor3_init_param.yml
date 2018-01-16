@@ -1,7 +1,7 @@
 #offset x,y,z boolean
-parameters: [-0.5, 0.2, 0.35]
-min: [-0.7, -0.3, 0.35]
-max: [-0.4, 0.3, 0.45] 
+parameters: [-0.5, 0.2, 0.55]
+min: [-0.7, -0.3, 0.45]
+max: [-0.4, 0.3, 0.70] 
 adaptable_parameters: [1, 1, 1]
 ConvergenceRate: 3.5
 adaptable: 1

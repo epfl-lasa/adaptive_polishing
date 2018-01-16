@@ -101,6 +101,8 @@ int main(int argc, char **argv)
   targets.push_back(tmp3); 
 
 
+
+
   PickAndPlacePlanner planner(
     nh,
     frequency,

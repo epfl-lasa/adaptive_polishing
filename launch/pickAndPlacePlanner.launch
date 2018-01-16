@@ -73,12 +73,16 @@
     <param name="output_active_node_topic_name"       value="$(arg topic_active_node)"/>
     <rosparam command="load" file="$(find adaptive_polishing)/config/pickAndPlacePlanner_param.yml"/>
     <node name="Planner" pkg="adaptive_polishing" type="pickAndPlacePlanner_node" output="screen"/>
+    <node name="grasp_control"  pkg="robotiq_s_model_control" type="SModelTcpNode.py" args="192.168.1.11" />
   </group>
 
   <node pkg="rostopic" type="rostopic" name="angle_setting" args="pub /lwr/joint_controllers/passive_ds_command_orient geometry_msgs/Quaternion '{x: 0.0, y: 1.0, z: 0.0, w: 0.0}' -r 100" />
 
   <node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" />
 
+  <!-- <node name="grasp_control"  pkg="robotiq_s_model_control" type="SModelTcpNode.py" args="192.168.1.11" /> -->
+
 <!-- <node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" /> -->
 
 </launch>
+

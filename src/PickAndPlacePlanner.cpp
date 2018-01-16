@@ -77,7 +77,18 @@ PickAndPlacePlanner::PickAndPlacePlanner(
 	double duration = 0.01;
 	publishTimer_ = nh_.createTimer(ros::Duration(duration), 
 			&PickAndPlacePlanner::PublishTargets,this);
- 
+
+
+	// intialize the gripper
+	gripper_.reset(new RSGripperInterface(false));
+
+  	ROS_INFO("[P&P-node] activating, wait 2 sec ...");
+  	gripper_->activate();
+    ros::Duration(3.0).sleep();
+    gripper_->setSpeed(250);
+  	gripper_->setPosition(128);
+  	ros::Duration(1.0).sleep();
+
 }
 
 void PickAndPlacePlanner::Run(){
@@ -201,11 +212,31 @@ void PickAndPlacePlanner::checkTargetReached(){
 	Eigen::Vector3d error = real_pose_ - targets_[activeNodeIndex_];
 	// ROS_INFO_STREAM("error is: " << error.norm());
 	ROS_INFO_STREAM_THROTTLE(1,"sensed force norm: " << rob_sensed_force_.norm());
-	if(error.norm() < 0.05 && rob_sensed_force_.norm()<7){
-		int tmp = activeNode_;
-		activeNode_ = (activeNode_ == 3 || activeNode_ == 1) ? 2 : (prev_activeNode_ + 2)%4;
-		activeNodeIndex_ = activeNode_ - 1;
-		prev_activeNode_ = tmp;
+	if(error.norm() <  ( (activeNode_ == 2) ? 0.08: 0.035 )  ){
+
+		// only peforming grasping for attractor 1 and 3
+		if(activeNode_ != 2) {
+			ros::Duration(0.2).sleep();
+
+			// if we reach our target, we open/close the grasp
+			if(activeNode_ == 1){
+  				gripper_->setPosition(250);
+			}
+			else if(activeNode_ == 3){
+				gripper_->setPosition(0);
+			}
+
+			ros::Duration(0.8).sleep();
+		}
+
+
+		// if the human lets us go, we change the attractor to the next one
+		if(rob_sensed_force_.norm()<7) {
+			int tmp = activeNode_;
+			activeNode_ = (activeNode_ == 3 || activeNode_ == 1) ? 2 : (prev_activeNode_ + 2)%4;
+			activeNodeIndex_ = activeNode_ - 1;
+			prev_activeNode_ = tmp;
+		}
 	}
 }
 

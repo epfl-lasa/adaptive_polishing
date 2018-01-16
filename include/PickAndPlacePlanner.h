@@ -3,6 +3,8 @@
 
 
 #include "ros/ros.h"
+#include <iostream>
+
 #include <vector>
 
 #include "geometry_msgs/Pose.h"
@@ -14,6 +16,8 @@
 #include "nav_msgs/Path.h"
 #include "std_msgs/Int32.h"
 #include <adaptive_polishing/pickAndPlaceParam_msg.h>
+#include <grasp_interface/rs_gripper_interface.h>
+
 
 #include "MathLib.h"
 #include "eigen3/Eigen/Dense"
@@ -71,6 +75,10 @@ private:
 
 	static PickAndPlacePlanner* me;
 	bool stop_ = false;
+
+
+	std::unique_ptr<RSGripperInterface> gripper_;
+
 
 public:
 
