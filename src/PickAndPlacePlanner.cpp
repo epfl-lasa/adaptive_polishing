@@ -88,6 +88,7 @@ PickAndPlacePlanner::PickAndPlacePlanner(
     gripper_->setSpeed(250);
   	gripper_->setPosition(128);
   	ros::Duration(1.0).sleep();
+  	prev_activeNode_ = ((activeNode_ - 1 ) % 3) +1;
 
 }
 
@@ -100,6 +101,14 @@ void PickAndPlacePlanner::Run(){
 		publishActiveNode();
 
 		ros::spinOnce();
+
+
+
+		ROS_INFO_STREAM_THROTTLE(1,"-----------------------------------------------");
+		ROS_INFO_STREAM_THROTTLE(1,"sensed force norm: " << rob_sensed_force_.norm());
+		ROS_INFO_STREAM_THROTTLE(1,"desired velocity: " << msg_desired_velocity_   );
+		ROS_INFO_STREAM_THROTTLE(1,"Active node: " << activeNode_ << " Previous: " << prev_activeNode_);
+
 
 		loop_rate_.sleep();
 	}
@@ -211,10 +220,13 @@ void PickAndPlacePlanner::checkTargetReached(){
 	// 	" target: " << targets_[activeNodeIndex_] << " activeNode: " << activeNode_);
 	Eigen::Vector3d error = real_pose_ - targets_[activeNodeIndex_];
 	// ROS_INFO_STREAM("error is: " << error.norm());
-	ROS_INFO_STREAM_THROTTLE(1,"sensed force norm: " << rob_sensed_force_.norm());
-	if(error.norm() <  ( (activeNode_ == 2) ? 0.08: 0.035 )  ){
+	ROS_INFO_STREAM_THROTTLE(1,"error norm: " << error.norm());
+	if(error.norm() <  ( (activeNode_ == 2) ? 0.08: 0.04 )  ){	
 
-		// only peforming grasping for attractor 1 and 3
+		// if the human lets us go, we change the attractor to the next one
+		if(rob_sensed_force_.norm()<7) {
+
+			// only peforming grasping for attractor 1 and 3
 		if(activeNode_ != 2) {
 			ros::Duration(0.2).sleep();
 
@@ -229,9 +241,6 @@ void PickAndPlacePlanner::checkTargetReached(){
 			ros::Duration(0.8).sleep();
 		}
 
-
-		// if the human lets us go, we change the attractor to the next one
-		if(rob_sensed_force_.norm()<7) {
 			int tmp = activeNode_;
 			activeNode_ = (activeNode_ == 3 || activeNode_ == 1) ? 2 : (prev_activeNode_ + 2)%4;
 			activeNodeIndex_ = activeNode_ - 1;

@@ -1,8 +1,8 @@
 #offset x,y,z boolean
-parameters: [-0.55, 0, 0.70]
+parameters: [-0.55, 0.35, 0.55]
 min: [-0.7, -0.3, 0.70]
-max: [-0.4, 0.3, 0.70] 
-adaptable_parameters: [1, 1, 1]
+max: [-0.4, 0.4, 0.70] 
+adaptable_parameters: [1, 1, 0]
 ConvergenceRate: 3.5
 adaptable: 0
 nodeNum: 2

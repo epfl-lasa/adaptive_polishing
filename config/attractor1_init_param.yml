@@ -1,6 +1,6 @@
 #offset x,y,z boolean
-parameters: [-0.6, -0.2, 0.55]
-min: [-0.7, -0.3, 0.45]
+parameters: [-0.6, -0.2, 0.37]
+min: [-0.7, -0.3, 0.33]
 max: [-0.4, 0.3, 0.65] 
 adaptable_parameters: [1, 1, 1]
 ConvergenceRate: 3.5
